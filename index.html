@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dispatch Pending List</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="180">
+
+<style>
+body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background:black;
+    color:white;
+}
+header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:20px;
+}
+h1 { font-size:42px; }
+#totalQty { font-size:30px; color:lightgreen; }
+
+table {
+    width:95%;
+    margin:auto;
+    border-collapse:collapse;
+    font-size:22px;
+}
+th, td {
+    border:2px solid white;
+    padding:8px;
+    text-align:center;
+}
+th { background:#333; }
+
+.overdue {
+    background:red;
+    animation:blink 1s infinite;
+}
+@keyframes blink { 50% { opacity:0.4; } }
+
+#tableWrap {
+    height:55vh;
+    overflow:hidden;
+}
+#scroll {
+    animation:scrollUp 30s linear infinite;
+}
+@keyframes scrollUp {
+    0% { transform:translateY(100%); }
+    100% { transform:translateY(-100%); }
+}
+
+#summary {
+    padding:15px;
+    font-size:20px;
+}
+</style>
+
+<script type="text/javascript"
+ src="https://www.gstatic.com/charts/loader.js"></script>
+
+<script>
+google.charts.load('current', {'packages':['table']});
+google.charts.setOnLoadCallback(loadData);
+
+function loadData() {
+    const query = new google.visualization.Query(
+      "https://docs.google.com/spreadsheets/d/1-MzOK58kPnIZInwA4tXSTo3-LNIplSvSXSGZoiMRjb4/gviz/tq?sheet=Dispatch_Pending"
+    );
+
+    query.send(function(response) {
+        const data = response.getDataTable();
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        let totalQty = 0;
+        let summary = {};
+        let rows = [];
+
+        for (let i=0; i<data.getNumberOfRows(); i++) {
+            const status = data.getValue(i,5);
+            if (status === "Dispatched") continue;
+
+            const qty = data.getValue(i,3);
+            const date = data.getValue(i,4);
+
+            totalQty += qty;
+            const customer = data.getValue(i,2);
+            summary[customer] = (summary[customer]||0)+qty;
+
+            rows.push([
+                data.getValue(i,0),
+                data.getValue(i,1),
+                customer,
+                qty,
+                date.toLocaleDateString(),
+                status,
+                date < today
+            ]);
+        }
+
+        rows.sort((a,b)=> new Date(a[4]) - new Date(b[4]));
+
+        document.getElementById("totalQty").innerText =
+          "Total Pending Qty: " + totalQty;
+
+        let html = "<table><tr><th>S.No</th><th>Job No</th><th>Customer</th><th>Qty</th><th>Dispatch Date</th><th>Status</th></tr>";
+
+        rows.forEach(r=>{
+            html += `<tr class="${r[6]?'overdue':''}">
+              <td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>
+              <td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td>
+            </tr>`;
+        });
+
+        html += "</table>";
+        document.getElementById("scroll").innerHTML = html;
+
+        let s = "<b>Customer-wise Summary:</b><br>";
+        for (let k in summary) s += `${k}: ${summary[k]} | `;
+        document.getElementById("summary").innerHTML = s;
+    });
+}
+</script>
+</head>
+
+<body>
+
+<header>
+<h1>DAILY DISPATCH – PENDING LIST</h1>
+<div id="totalQty">Loading...</div>
+</header>
+
+<div id="tableWrap">
+  <div id="scroll"></div>
+</div>
+
+<div id="summary"></div>
+
+</body>
+</html>
