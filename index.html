@@ -28,86 +28,90 @@ th{background:#333;}
 #summary{padding:15px;font-size:18px;}
 </style>
 
-<script src="https://www.gstatic.com/charts/loader.js"></script>
 <script>
-google.charts.load('current', {'packages':['table']});
-google.charts.setOnLoadCallback(loadData);
+// Fetch and render CSV
+const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
+
+// CSV parser
+function parseCSV(text){
+    const rows = [];
+    let row = [], quote = false, cell = "";
+    for(let i=0; i<text.length; i++){
+        const ch = text[i];
+        if(ch === '"') { quote = !quote; }
+        else if(ch === ',' && !quote){
+            row.push(cell); cell = "";
+        }
+        else if(ch === '\n' && !quote){
+            row.push(cell); rows.push(row);
+            row = []; cell = "";
+        }
+        else { cell += ch; }
+    }
+    if(cell) row.push(cell);
+    if(row.length) rows.push(row);
+    return rows;
+}
 
 function parseDate(val){
-  if(!val) return null;
-  if(val instanceof Date) return val;
-
-  const parts = val.toString().split("-");
-  if(parts.length!==2) return null;
-
-  const day = parseInt(parts[0]);
-  const month = new Date(Date.parse(parts[1]+" 1, 2024")).getMonth();
-  const year = new Date().getFullYear();
-
-  return new Date(year, month, day);
+    if(!val) return null;
+    const parts = val.trim().split("-");
+    if(parts.length !== 2) return null;
+    const day = parseInt(parts[0]);
+    const mon = new Date(Date.parse(parts[1]+" 1, 2024")).getMonth();
+    const year = new Date().getFullYear();
+    return new Date(year, mon, day);
 }
 
-function loadData(){
-  const query = new google.visualization.Query(
-    "https://docs.google.com/spreadsheets/d/1-MzOK58kPnIZInwA4tXSTo3-LNIplSvSXSGZoiMRjb4/gviz/tq?sheet=DAILY%20DISPATCH%20PLAN"
-  );
+fetch(sheetURL)
+.then(res => res.text())
+.then(txt => {
+    const data = parseCSV(txt.trim());
+    const header = data.shift(); // remove header
 
-  query.send(res=>{
-    if(res.isError()){
-      document.getElementById("totalQty").innerText="Data load error";
-      return;
-    }
+    let totalQty = 0, summary = {}, rows = [];
+    const today = new Date(); today.setHours(0,0,0,0);
 
-    const data=res.getDataTable();
-    const today=new Date(); today.setHours(0,0,0,0);
+    data.forEach(r => {
+        const qty = parseInt(r[5]) || 0;
+        const date = parseDate(r[6]);
+        if(!qty || !date) return;
 
-    let total=0, summary={}, rows=[];
-
-    for(let i=0;i<data.getNumberOfRows();i++){
-      const qty = Number(data.getValue(i,5));
-      const rawDate = data.getValue(i,6);
-      const date = parseDate(rawDate);
-      const cust = data.getValue(i,1);
-
-      if(!qty || !date) continue;   // skip empty row
-
-      total+=qty;
-      summary[cust]=(summary[cust]||0)+qty;
-
-      rows.push([
-        data.getValue(i,0),
-        cust,
-        data.getValue(i,2),
-        data.getValue(i,3),
-        data.getValue(i,4),
-        qty,
-        date.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}),
-        date<today
-      ]);
-    }
-
-    rows.sort((a,b)=>new Date(a[6])-new Date(b[6]));
-
-    document.getElementById("totalQty").innerText="Total Qty: "+total;
-
-    let html="<table><tr><th>Sl.No</th><th>Customer</th><th>Item Code</th><th>Item Name</th><th>Product</th><th>Qty</th><th>Dispatch Date</th></tr>";
-    rows.forEach(r=>{
-      html+=`<tr class="${r[7]?'overdue':''}">
-      <td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>
-      <td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td>
-      <td>${r[6]}</td></tr>`;
+        totalQty += qty;
+        summary[r[1]] = (summary[r[1]]||0) + qty;
+        rows.push([r[0], r[1], r[2], r[3], r[4], qty, date]);
     });
-    html+="</table>";
-    document.getElementById("scroll").innerHTML=html;
 
-    let s="<b>Customer-wise Qty:</b><br>";
-    for(let k in summary) s+=`${k}: ${summary[k]} | `;
-    document.getElementById("summary").innerHTML=s;
-  });
-}
+    rows.sort((a,b) => a[6] - b[6]);
+
+    document.getElementById("totalQty").innerText = "Total Qty: " + totalQty;
+
+    let tableHTML = "<table><tr>";
+    tableHTML += "<th>Sl.No</th><th>Customer</th><th>Item Code</th><th>Item Name</th><th>Product</th><th>Qty</th><th>Dispatch Date</th></tr>";
+
+    rows.forEach(r => {
+        const overdue = (r[6] < today) ? "overdue" : "";
+        const dStr = r[6].toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
+        tableHTML += `<tr class="${overdue}"><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td>${dStr}</td></tr>`;
+    });
+    tableHTML += "</table>";
+
+    document.getElementById("scroll").innerHTML = tableHTML;
+
+    let summHTML = "<b>Customer-wise Qty Summary:</b><br>";
+    for(let c in summary){
+        summHTML += `${c}: ${summary[c]} | `;
+    }
+    document.getElementById("summary").innerHTML = summHTML;
+
+})
+.catch(err => {
+    document.body.innerHTML = "<h2 style='color:red;text-align:center'>DATA LOAD ERROR</h2>";
+    console.error(err);
+});
 </script>
-</head>
 
+</head>
 <body>
 
 <header>
