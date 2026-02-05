@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Dispatch Pending</title>
+<title>DISPATCH PENDING</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="180">
+<meta http-equiv="refresh" content="300">
 
 <style>
 body{margin:0;font-family:Arial;background:black;color:white;}
@@ -15,50 +15,116 @@ table{width:95%;margin:auto;border-collapse:collapse;font-size:20px;}
 th,td{border:2px solid white;padding:6px;text-align:center;}
 th{background:#333;}
 
-.overdue{background:red;animation:blink 1.2s infinite;}
+.overdue{background:red;color:white;animation:blink 1.2s infinite;}
 @keyframes blink{50%{opacity:0.4;}}
 
 #wrap{height:55vh;overflow:hidden;}
-#scroll{animation:scrollUp 240s linear infinite;}
+#scroll{animation:scrollUp 180s linear infinite;}
 @keyframes scrollUp{
   0%{transform:translateY(100%);}
   100%{transform:translateY(-100%);}
 }
 
-#summary{padding:15px;font-size:18px;}
+#summary{padding:15px;font-size:18px;text-align:center;}
+#error{color:red;text-align:center;font-size:22px;margin-top:20px;}
 </style>
 
 <script>
-const sheetURL="https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
 function parseCSV(text){
-  const rows=[], row=[];
-  let q=false, c="";
+  const rows=[];
+  let row=[], cell="", quote=false;
   for(let i=0;i<text.length;i++){
-    const ch=text[i];
-    if(ch=='"') q=!q;
-    else if(ch==','&&!q){row.push(c);c="";}
-    else if(ch=='\n'&&!q){row.push(c);rows.push([...row]);row.length=0;c="";}
-    else c+=ch;
+    const c=text[i];
+    if(c=='"'){quote=!quote;}
+    else if(c==','&&!quote){row.push(cell);cell="";}
+    else if(c=='\n'&&!quote){
+      row.push(cell); rows.push(row);
+      row=[]; cell="";
+    } else cell+=c;
   }
-  if(c) row.push(c);
-  if(row.length) rows.push(row);
+  if(cell){row.push(cell); rows.push(row);}
   return rows;
 }
 
 function parseDate(v){
   if(!v) return null;
-  const p=v.trim().split("-");
-  if(p.length!=2) return null;
-  const d=parseInt(p[0]);
-  const m=new Date(Date.parse(p[1]+" 1, 2024")).getMonth();
-  return new Date(new Date().getFullYear(),m,d);
+  v=v.trim();
+  const p=v.split("-");
+  if(p.length!==2) return null;
+  const day=parseInt(p[0]);
+  const mon={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11}[p[1].substring(0,3).toLowerCase()];
+  if(mon===undefined||isNaN(day)) return null;
+  return new Date(new Date().getFullYear(),mon,day);
 }
 
-fetch(sheetURL).then(r=>r.text()).then(t=>{
-  const d=parseCSV(t.trim()); d.shift();
-  let total=0, sum={}, rows=[];
+fetch(SHEET_URL)
+.then(r=>r.text())
+.then(txt=>{
+  const data=parseCSV(txt.trim());
+  if(data.length<=1){
+    document.getElementById("error").innerText="No data found in sheet";
+    return;
+  }
+
+  data.shift(); // remove header
+
+  let total=0, summary={}, rows=[];
   const today=new Date(); today.setHours(0,0,0,0);
 
-  d.forEach(r=>{
-    const qty
+  data.forEach(r=>{
+    const qty=parseInt(r[5]);
+    const date=parseDate(r[6]);
+    if(!qty||!date) return;
+
+    total+=qty;
+    summary[r[1]]=(summary[r[1]]||0)+qty;
+    rows.push([r,date]);
+  });
+
+  if(rows.length===0){
+    document.getElementById("error").innerText="No valid rows to display";
+    return;
+  }
+
+  rows.sort((a,b)=>a[1]-b[1]);
+  document.getElementById("totalQty").innerText="Total Qty: "+total;
+
+  let h="<table><tr><th>Sl.No</th><th>Customer</th><th>Item Code</th><th>Item Name</th><th>Product</th><th>Qty</th><th>Dispatch Date</th></tr>";
+  rows.forEach(x=>{
+    const r=x[0], d=x[1];
+    const od=d<today?"overdue":"";
+    h+=`<tr class="${od}">
+      <td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>
+      <td>${r[3]}</td><td>${r[4]}</td>
+      <td>${r[5]}</td>
+      <td>${d.toLocaleDateString("en-GB",{day:"2-digit",month:"short"})}</td>
+    </tr>`;
+  });
+  h+="</table>";
+  document.getElementById("scroll").innerHTML=h;
+
+  let s="<b>Customer-wise Qty:</b><br>";
+  for(let k in summary) s+=`${k}: ${summary[k]} | `;
+  document.getElementById("summary").innerHTML=s;
+})
+.catch(e=>{
+  document.getElementById("error").innerText="DATA LOAD ERROR";
+  console.error(e);
+});
+</script>
+</head>
+
+<body>
+<header>
+  <h1>DISPATCH PENDING</h1>
+  <div id="totalQty">Loading...</div>
+</header>
+
+<div id="wrap"><div id="scroll"></div></div>
+<div id="summary"></div>
+<div id="error"></div>
+
+</body>
+</html>
