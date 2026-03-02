@@ -14,65 +14,49 @@ body{
   overflow:hidden;
 }
 
-/* HEADER */
 header{
   display:flex;
   justify-content:space-between;
   align-items:center;
   padding:25px 50px;
-  backdrop-filter:blur(12px);
   background:rgba(255,255,255,0.08);
-  border-bottom:1px solid rgba(255,255,255,0.2);
 }
 
 h1{
-  font-size:42px;
-  letter-spacing:2px;
+  font-size:40px;
   margin:0;
 }
 
 #totalQty{
-  font-size:32px;
+  font-size:28px;
   background:rgba(255,255,255,0.2);
-  padding:15px 30px;
-  border-radius:40px;
+  padding:10px 25px;
+  border-radius:30px;
   font-weight:bold;
-  backdrop-filter:blur(10px);
 }
 
-/* GLASS CARD */
-.glass{
-  backdrop-filter:blur(12px);
-  background:rgba(255,255,255,0.08);
-  border:1px solid rgba(255,255,255,0.2);
-  border-radius:20px;
-  box-shadow:0 8px 32px rgba(0,0,0,0.4);
-}
-
-/* TABLE AREA */
 #wrap{
-  height:60vh;
-  margin:30px 40px;
-  padding:25px;
+  height:65vh;
+  margin:20px 40px;
+  padding:20px;
+  background:rgba(255,255,255,0.08);
+  border-radius:20px;
   overflow:hidden;
 }
 
 table{
   width:100%;
   border-collapse:collapse;
-  font-size:24px;
+  font-size:22px;
 }
 
 th{
-  background:rgba(0,0,0,0.6);
-  padding:15px;
-  position:sticky;
-  top:0;
-  font-size:26px;
+  background:rgba(0,0,0,0.7);
+  padding:12px;
 }
 
 td{
-  padding:14px;
+  padding:12px;
   text-align:center;
 }
 
@@ -80,186 +64,112 @@ tr:nth-child(even){
   background:rgba(255,255,255,0.05);
 }
 
-/* STATUS BADGES */
 .badge{
-  padding:8px 18px;
+  padding:6px 15px;
   border-radius:20px;
   font-weight:bold;
-  font-size:20px;
 }
 
 .green{ background:#00c853; }
 .red{ background:#ff1744; }
 
-/* TODAY */
 .today{
   background:#ffd600 !important;
   color:black;
-  font-weight:bold;
 }
 
-/* OVERDUE */
 .overdue{
   background:#b71c1c !important;
-  color:white;
   animation:blink 1.2s infinite;
 }
 
 @keyframes blink{
   50%{opacity:0.5;}
 }
-
-/* SUMMARY */
-#summary{
-  margin:20px 40px;
-  padding:25px;
-  font-size:22px;
-  backdrop-filter:blur(12px);
-  background:rgba(255,255,255,0.08);
-  border-radius:20px;
-}
 </style>
 
 <script>
-const SHEET_URL =
-"https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
-/* CSV PARSER */
+const SHEET_URL = "PASTE_YOUR_CSV_LINK_HERE";
+
 function parseCSV(text){
-  const rows=[];
-  let row=[], cell="", quote=false;
-  for(let i=0;i<text.length;i++){
-    const c=text[i];
-    if(c=='"') quote=!quote;
-    else if(c==','&&!quote){ row.push(cell); cell=""; }
-    else if(c=='\n'&&!quote){
-      row.push(cell); rows.push(row);
-      row=[]; cell="";
-    } else cell+=c;
-  }
-  if(cell){ row.push(cell); rows.push(row); }
-  return rows;
+  return text.split("\n").map(row => row.split(","));
 }
 
-/* DATE PARSER */
 function parseDate(v){
   if(!v) return null;
-  v = v.toString().trim().replace(/-\d{4}$/,"");
-  const p=v.split("-");
+  const p=v.trim().split("-");
   if(p.length<2) return null;
 
   const day=parseInt(p[0]);
-  const m=p[1].toLowerCase();
-  const map={
-    jan:0,january:0,feb:1,february:1,mar:2,march:2,
-    apr:3,april:3,may:4,jun:5,june:5,
-    jul:6,july:6,aug:7,august:7,
-    sep:8,september:8,oct:9,october:9,
-    nov:10,november:10,dec:11,december:11
-  };
-  if(map[m]===undefined) return null;
-  return new Date(new Date().getFullYear(),map[m],day);
+  const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const m=months[p[1].toLowerCase()];
+  if(m===undefined) return null;
+
+  return new Date(new Date().getFullYear(),m,day);
 }
 
-/* AUTO SCROLL */
-function startScroll(){
-  const wrap=document.getElementById("wrap");
-  const scroll=document.getElementById("scroll");
-  if(scroll.scrollHeight<=wrap.clientHeight) return;
-
-  let pos=0;
-  const speed=0.4;
-
-  setInterval(()=>{
-    pos+=speed;
-    scroll.style.transform=`translateY(-${pos}px)`;
-    if(pos>=scroll.scrollHeight-wrap.clientHeight){
-      pos=0;
-      scroll.style.transform="translateY(0)";
-    }
-  },30);
-}
-
-/* LOAD DATA */
 fetch(SHEET_URL)
 .then(r=>r.text())
 .then(txt=>{
-  const data=parseCSV(txt.trim());
-  data.shift();
-  data.shift();
 
-  let total=0, summary={}, rows=[];
-  const today=new Date(); 
+  const data=parseCSV(txt.trim());
+  data.shift(); // remove header only
+
+  let total=0;
+  let rows=[];
+  const today=new Date();
   today.setHours(0,0,0,0);
 
   data.forEach(r=>{
     const qty=parseInt(r[5]);
     const date=parseDate(r[6]);
+
     if(isNaN(qty)||!date) return;
 
     total+=qty;
-    summary[r[1]]=(summary[r[1]]||0)+qty;
     rows.push([r,date]);
   });
 
   rows.sort((a,b)=>a[1]-b[1]);
 
-  /* Animated Counter */
-  let count=0;
-  const counter=document.getElementById("totalQty");
-  const interval=setInterval(()=>{
-    count+=Math.ceil(total/50);
-    if(count>=total){
-      count=total;
-      clearInterval(interval);
-    }
-    counter.innerText="Total Qty: "+count;
-  },30);
+  document.getElementById("totalQty").innerText="Total Qty: "+total;
 
   let html="<table><tr>"+
-    "<th>Sl No</th><th>Customer</th><th>Item Code</th>"+
-    "<th>Item Name</th><th>Product</th><th>Qty</th>"+
-    "<th>Dispatch Date</th><th>Status</th>"+
-    "</tr>";
+  "<th>Sl No</th><th>Customer</th><th>Item Code</th>"+
+  "<th>Item Name</th><th>Product</th><th>Qty</th>"+
+  "<th>Dispatch Date</th><th>Status</th></tr>";
 
   rows.forEach(x=>{
     const r=x[0], d=x[1];
-
-    let rowClass="";
-    let statusBadge="";
+    let rowClass="", badge="";
 
     if(d < today){
       rowClass="overdue";
-      statusBadge=`<span class="badge red">OVERDUE</span>`;
-    } 
-    else if(d.getTime() === today.getTime()){
+      badge=`<span class="badge red">OVERDUE</span>`;
+    } else if(d.getTime()===today.getTime()){
       rowClass="today";
-      statusBadge=`<span class="badge green">TODAY</span>`;
-    }
-    else{
-      statusBadge=`<span class="badge green">UPCOMING</span>`;
+      badge=`<span class="badge green">TODAY</span>`;
+    } else{
+      badge=`<span class="badge green">UPCOMING</span>`;
     }
 
     html+=`<tr class="${rowClass}">
-      <td>${r[0]}</td>
-      <td>${r[1]}</td>
-      <td>${r[2]}</td>
-      <td>${r[3]}</td>
-      <td>${r[4]}</td>
-      <td>${r[5]}</td>
-      <td>${d.toLocaleDateString("en-GB",{day:"2-digit",month:"short"})}</td>
-      <td>${statusBadge}</td>
+    <td>${r[0]}</td>
+    <td>${r[1]}</td>
+    <td>${r[2]}</td>
+    <td>${r[3]}</td>
+    <td>${r[4]}</td>
+    <td>${r[5]}</td>
+    <td>${r[6]}</td>
+    <td>${badge}</td>
     </tr>`;
   });
 
   html+="</table>";
+
   document.getElementById("scroll").innerHTML=html;
 
-  let s="<b>Customer-wise Qty:</b><br>";
-  for(let k in summary) s+=`${k}: ${summary[k]} | `;
-  document.getElementById("summary").innerHTML=s;
-
-  startScroll();
 });
 </script>
 </head>
@@ -271,11 +181,9 @@ fetch(SHEET_URL)
   <div id="totalQty">Loading...</div>
 </header>
 
-<div id="wrap" class="glass">
+<div id="wrap">
   <div id="scroll"></div>
 </div>
-
-<div id="summary"></div>
 
 </body>
 </html>
