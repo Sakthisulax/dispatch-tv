@@ -41,7 +41,7 @@ h1{
   padding:20px;
   background:rgba(255,255,255,0.08);
   border-radius:20px;
-  overflow:hidden;
+  overflow:auto;
 }
 
 table{
@@ -53,6 +53,8 @@ table{
 th{
   background:rgba(0,0,0,0.7);
   padding:12px;
+  position:sticky;
+  top:0;
 }
 
 td{
@@ -90,87 +92,105 @@ tr:nth-child(even){
 
 <script>
 
-const SHEET_URL = "PASTE_YOUR_CSV_LINK_HERE";
+// 🔴 KEEP YOUR SAME CSV LINK HERE
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
 function parseCSV(text){
   return text.split("\n").map(row => row.split(","));
 }
 
-function parseDate(v){
-  if(!v) return null;
-  const p=v.trim().split("-");
-  if(p.length<2) return null;
+// Flexible Date Parser
+function parseDate(value){
+  if(!value) return null;
 
-  const day=parseInt(p[0]);
-  const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-  const m=months[p[1].toLowerCase()];
-  if(m===undefined) return null;
+  // Try automatic JS parsing
+  let d = new Date(value);
+  if(!isNaN(d)) return d;
 
-  return new Date(new Date().getFullYear(),m,day);
+  // Try DD/MM/YYYY or DD-MM-YYYY
+  let parts = value.split(/[\/\-]/);
+  if(parts.length === 3){
+    return new Date(parts[2], parts[1]-1, parts[0]);
+  }
+
+  return null;
 }
 
 fetch(SHEET_URL)
-.then(r=>r.text())
-.then(txt=>{
+.then(r => r.text())
+.then(txt => {
 
-  const data=parseCSV(txt.trim());
-  data.shift(); // remove header only
+  const data = parseCSV(txt.trim());
+  data.shift(); // remove header row
 
-  let total=0;
-  let rows=[];
-  const today=new Date();
+  let total = 0;
+  let rows = [];
+
+  const today = new Date();
   today.setHours(0,0,0,0);
 
-  data.forEach(r=>{
-    const qty=parseInt(r[5]);
-    const date=parseDate(r[6]);
+  data.forEach(r => {
 
-    if(isNaN(qty)||!date) return;
+    if(r.length < 7) return;
 
-    total+=qty;
-    rows.push([r,date]);
+    const qty = parseInt(r[5]);
+    const date = parseDate(r[6]);
+
+    if(isNaN(qty) || !date) return;
+
+    total += qty;
+    rows.push([r, date]);
   });
 
-  rows.sort((a,b)=>a[1]-b[1]);
+  rows.sort((a,b) => a[1] - b[1]);
 
-  document.getElementById("totalQty").innerText="Total Qty: "+total;
+  document.getElementById("totalQty").innerText = "Total Qty: " + total;
 
-  let html="<table><tr>"+
+  let html = "<table><tr>"+
   "<th>Sl No</th><th>Customer</th><th>Item Code</th>"+
   "<th>Item Name</th><th>Product</th><th>Qty</th>"+
   "<th>Dispatch Date</th><th>Status</th></tr>";
 
-  rows.forEach(x=>{
-    const r=x[0], d=x[1];
-    let rowClass="", badge="";
+  rows.forEach(x => {
+
+    const r = x[0];
+    const d = x[1];
+
+    let rowClass = "";
+    let badge = "";
 
     if(d < today){
-      rowClass="overdue";
-      badge=`<span class="badge red">OVERDUE</span>`;
-    } else if(d.getTime()===today.getTime()){
-      rowClass="today";
-      badge=`<span class="badge green">TODAY</span>`;
-    } else{
-      badge=`<span class="badge green">UPCOMING</span>`;
+      rowClass = "overdue";
+      badge = `<span class="badge red">OVERDUE</span>`;
+    } 
+    else if(d.toDateString() === today.toDateString()){
+      rowClass = "today";
+      badge = `<span class="badge green">TODAY</span>`;
+    } 
+    else{
+      badge = `<span class="badge green">UPCOMING</span>`;
     }
 
-    html+=`<tr class="${rowClass}">
-    <td>${r[0]}</td>
-    <td>${r[1]}</td>
-    <td>${r[2]}</td>
-    <td>${r[3]}</td>
-    <td>${r[4]}</td>
-    <td>${r[5]}</td>
-    <td>${r[6]}</td>
-    <td>${badge}</td>
+    html += `<tr class="${rowClass}">
+      <td>${r[0]}</td>
+      <td>${r[1]}</td>
+      <td>${r[2]}</td>
+      <td>${r[3]}</td>
+      <td>${r[4]}</td>
+      <td>${r[5]}</td>
+      <td>${d.toLocaleDateString()}</td>
+      <td>${badge}</td>
     </tr>`;
   });
 
-  html+="</table>";
+  html += "</table>";
+  document.getElementById("scroll").innerHTML = html;
 
-  document.getElementById("scroll").innerHTML=html;
-
+})
+.catch(error => {
+  console.error("Sheet Load Error:", error);
 });
+
 </script>
 </head>
 
