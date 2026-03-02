@@ -94,48 +94,43 @@ tr:nth-child(even){
 
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
-// Parse TAB separated CSV correctly
-function parseCSV(text){
-  return text.split("\n").map(row => row.split("\t"));
+function clean(value){
+  return value.replace(/"/g,'').trim();
 }
 
-// Parse "2-Mar" format using current year
 function parseDate(value){
   if(!value) return null;
 
-  value = value.trim();
+  value = clean(value);
+
   const parts = value.split("-");
+  if(parts.length !== 2) return null;
 
-  if(parts.length === 2){
-    const day = parseInt(parts[0]);
-    const monthText = parts[1].toLowerCase();
+  const day = parseInt(parts[0]);
+  const monthText = parts[1].toLowerCase();
 
-    const months = {
-      jan:0,feb:1,mar:2,apr:3,may:4,jun:5,
-      jul:6,aug:7,sep:8,oct:9,nov:10,dec:11
-    };
+  const months = {
+    jan:0,feb:1,mar:2,apr:3,may:4,jun:5,
+    jul:6,aug:7,sep:8,oct:9,nov:10,dec:11
+  };
 
-    const month = months[monthText];
-    if(month === undefined) return null;
+  const month = months[monthText];
+  if(month === undefined) return null;
 
-    const year = new Date().getFullYear();
-    return new Date(year, month, day);
-  }
-
-  return null;
+  // FORCE 2026 because sheet is March-26
+  return new Date(2026, month, day);
 }
 
 fetch(SHEET_URL)
 .then(res => res.text())
-.then(text => {
+.then(data => {
 
-  const rows = parseCSV(text.trim());
+  const rows = data.split("\n").map(r => r.split(","));
 
-  rows.shift(); // remove title row
-  rows.shift(); // remove header row
+  rows.splice(0,2);
 
   let totalQty = 0;
-  let processedRows = [];
+  let html = "<table><tr><th>SI NO</th><th>CUSTOMER</th><th>SCHEDULE DATE</th><th>ITEM CODE</th><th>ITEM NAME</th><th>PRODUCT</th><th>PROJECT MANAGER</th><th>SCH QTY</th><th>STATUS</th></tr>";
 
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -143,64 +138,46 @@ fetch(SHEET_URL)
   rows.forEach(r => {
 
     if(r.length < 8) return;
+    if(!r[0]) return;
 
-    const qty = parseInt(r[7]);
+    const qty = parseInt(clean(r[7]));
     const date = parseDate(r[2]);
 
     if(isNaN(qty) || !date) return;
 
     totalQty += qty;
-    processedRows.push([r, date]);
-  });
 
-  processedRows.sort((a,b) => a[1] - b[1]);
-
-  document.getElementById("totalQty").innerText = "Total Qty: " + totalQty;
-
-  let html = "<table><tr>"+
-    "<th>SI NO</th><th>CUSTOMER</th><th>SCHEDULE DATE</th>"+
-    "<th>ITEM CODE</th><th>ITEM NAME</th>"+
-    "<th>PRODUCT</th><th>PROJECT MANAGER</th>"+
-    "<th>SCH QTY</th><th>STATUS</th></tr>";
-
-  processedRows.forEach(item => {
-
-    const r = item[0];
-    const d = item[1];
-
+    let status = "";
     let rowClass = "";
-    let statusBadge = "";
 
-    if(d < today){
+    if(date < today){
+      status = "OVERDUE";
       rowClass = "overdue";
-      statusBadge = `<span class="badge red">OVERDUE</span>`;
     }
-    else if(d.getTime() === today.getTime()){
+    else if(date.getTime() === today.getTime()){
+      status = "TODAY";
       rowClass = "today";
-      statusBadge = `<span class="badge green">TODAY</span>`;
     }
     else{
-      statusBadge = `<span class="badge green">UPCOMING</span>`;
+      status = "UPCOMING";
+      rowClass = "upcoming";
     }
 
-    html += `<tr class="${rowClass}">
-      <td>${r[0]}</td>
-      <td>${r[1]}</td>
-      <td>${r[2]}</td>
-      <td>${r[3]}</td>
-      <td>${r[4]}</td>
-      <td>${r[5]}</td>
-      <td>${r[6]}</td>
-      <td>${r[7]}</td>
-      <td>${statusBadge}</td>
-    </tr>`;
+    html += "<tr class='"+rowClass+"'>";
+    for(let i=0;i<8;i++){
+      html += "<td>"+clean(r[i])+"</td>";
+    }
+    html += "<td>"+status+"</td></tr>";
+
   });
 
   html += "</table>";
-  document.getElementById("scroll").innerHTML = html;
+
+  document.getElementById("tableContainer").innerHTML = html;
+  document.getElementById("totalQty").innerText = "Total Qty: " + totalQty;
 
 })
-.catch(err => console.error(err));
+.catch(err => console.log(err));
 
 </script>
 </head>
