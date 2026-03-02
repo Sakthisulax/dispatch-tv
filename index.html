@@ -21,10 +21,7 @@ header{
   background:rgba(255,255,255,0.08);
 }
 
-h1{
-  margin:0;
-  font-size:26px;
-}
+h1{margin:0;font-size:26px;}
 
 #totalQty{
   font-size:18px;
@@ -63,20 +60,25 @@ th{
 /* STATUS COLORS */
 
 .today{
-  background:#ffeb3b !important;   /* Bright yellow */
-  color:#000 !important;           /* BLACK TEXT */
+  background:#ffeb3b !important;
+  color:#000 !important;
   font-weight:bold;
 }
 
 .overdue{
-  background:#c62828 !important;   /* Red */
-  color:#fff !important;           /* White text */
+  background:#c62828 !important;
+  color:#fff !important;
   font-weight:bold;
 }
 
 .upcoming{
-  background:#2e7d32 !important;   /* Green */
-  color:#fff !important;           /* White text */
+  background:#2e7d32 !important;
+  color:#fff !important;
+}
+
+.error{
+  color:red;
+  font-size:18px;
 }
 
 </style>
@@ -93,11 +95,7 @@ th{
 
 <script>
 
-// GOOGLE PUBLISHED CSV LINK
-const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
-
-// CORS proxy for GitHub Pages
-const finalURL = "https://api.allorigins.win/raw?url=" + encodeURIComponent(sheetURL);
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
 function clean(v){
   return v ? v.replace(/"/g,'').trim() : "";
@@ -120,16 +118,20 @@ function parseDate(value){
   const month = months[parts[1].toLowerCase()];
   if(month === undefined) return null;
 
-  // Sheet is March-26 → force 2026
-  return new Date(2026, month, day);
+  // Auto detect year
+  const currentYear = new Date().getFullYear();
+  return new Date(currentYear, month, day);
 }
 
-fetch(finalURL)
-.then(res => res.text())
+fetch(SHEET_URL)
+.then(response => {
+  if(!response.ok) throw new Error("Sheet not accessible");
+  return response.text();
+})
 .then(data => {
 
   const rows = data.split("\n").map(r => r.split(","));
-  rows.splice(0,2); // remove title + header
+  rows.splice(0,2);
 
   let totalQty = 0;
 
@@ -180,9 +182,9 @@ fetch(finalURL)
   document.getElementById("totalQty").innerText = "Total Qty: " + totalQty;
 
 })
-.catch(err=>{
-  document.getElementById("tableContainer").innerHTML="Error loading data.";
-  console.log(err);
+.catch(error => {
+  document.getElementById("tableContainer").innerHTML = "<div class='error'>Unable to load Google Sheet. Check Publish settings.</div>";
+  console.log(error);
 });
 
 </script>
