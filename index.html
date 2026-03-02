@@ -2,13 +2,13 @@
 <html>
 <head>
 <title>DAILY DISPATCH PLAN</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="300">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
 body{
   margin:0;
-  font-family:'Segoe UI', sans-serif;
+  font-family:Arial, sans-serif;
   background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
   color:white;
 }
@@ -17,62 +17,47 @@ header{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  padding:25px 50px;
+  padding:20px 40px;
   background:rgba(255,255,255,0.08);
 }
 
 h1{
-  font-size:34px;
   margin:0;
+  font-size:28px;
 }
 
 #totalQty{
-  font-size:24px;
+  font-size:20px;
   background:rgba(255,255,255,0.2);
-  padding:10px 20px;
-  border-radius:30px;
+  padding:8px 18px;
+  border-radius:20px;
   font-weight:bold;
 }
 
-#wrap{
-  height:70vh;
+#tableContainer{
   margin:20px 40px;
-  padding:20px;
   background:rgba(255,255,255,0.08);
-  border-radius:20px;
+  padding:20px;
+  border-radius:15px;
   overflow:auto;
 }
 
 table{
   width:100%;
   border-collapse:collapse;
-  font-size:17px;
+}
+
+th, td{
+  padding:8px;
+  text-align:center;
+  border-bottom:1px solid rgba(255,255,255,0.1);
 }
 
 th{
-  background:rgba(0,0,0,0.7);
-  padding:10px;
+  background:#000;
   position:sticky;
   top:0;
 }
-
-td{
-  padding:10px;
-  text-align:center;
-}
-
-tr:nth-child(even){
-  background:rgba(255,255,255,0.05);
-}
-
-.badge{
-  padding:5px 12px;
-  border-radius:20px;
-  font-weight:bold;
-}
-
-.green{ background:#00c853; }
-.red{ background:#ff1744; }
 
 .today{
   background:#ffd600 !important;
@@ -81,27 +66,36 @@ tr:nth-child(even){
 }
 
 .overdue{
-  background:#b71c1c !important;
-  animation:blink 1.2s infinite;
+  background:#c62828 !important;
 }
 
-@keyframes blink{
-  50%{opacity:0.5;}
+.upcoming{
+  background:#2e7d32 !important;
 }
+
 </style>
+</head>
+
+<body>
+
+<header>
+  <h1>DAILY DISPATCH PLAN</h1>
+  <div id="totalQty">Loading...</div>
+</header>
+
+<div id="tableContainer">Loading data...</div>
 
 <script>
 
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
 function clean(value){
-  return value.replace(/"/g,'').trim();
+  return value ? value.replace(/"/g,'').trim() : "";
 }
 
 function parseDate(value){
-  if(!value) return null;
-
   value = clean(value);
+  if(!value) return null;
 
   const parts = value.split("-");
   if(parts.length !== 2) return null;
@@ -117,20 +111,23 @@ function parseDate(value){
   const month = months[monthText];
   if(month === undefined) return null;
 
-  // FORCE 2026 because sheet is March-26
+  // Force year 2026 (March-26 sheet)
   return new Date(2026, month, day);
 }
 
 fetch(SHEET_URL)
-.then(res => res.text())
+.then(response => response.text())
 .then(data => {
 
   const rows = data.split("\n").map(r => r.split(","));
 
+  // Remove title row + header row
   rows.splice(0,2);
 
   let totalQty = 0;
-  let html = "<table><tr><th>SI NO</th><th>CUSTOMER</th><th>SCHEDULE DATE</th><th>ITEM CODE</th><th>ITEM NAME</th><th>PRODUCT</th><th>PROJECT MANAGER</th><th>SCH QTY</th><th>STATUS</th></tr>";
+
+  let html = "<table>";
+  html += "<tr><th>SI NO</th><th>CUSTOMER</th><th>SCHEDULE DATE</th><th>ITEM CODE</th><th>ITEM NAME</th><th>PRODUCT</th><th>PROJECT MANAGER</th><th>SCH QTY</th><th>STATUS</th></tr>";
 
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -138,7 +135,7 @@ fetch(SHEET_URL)
   rows.forEach(r => {
 
     if(r.length < 8) return;
-    if(!r[0]) return;
+    if(!clean(r[0])) return;
 
     const qty = parseInt(clean(r[7]));
     const date = parseDate(r[2]);
@@ -177,21 +174,12 @@ fetch(SHEET_URL)
   document.getElementById("totalQty").innerText = "Total Qty: " + totalQty;
 
 })
-.catch(err => console.log(err));
+.catch(error => {
+  document.getElementById("tableContainer").innerHTML = "Error loading Google Sheet!";
+  console.error(error);
+});
 
 </script>
-</head>
-
-<body>
-
-<header>
-  <h1>DAILY DISPATCH PLAN</h1>
-  <div id="totalQty">Loading...</div>
-</header>
-
-<div id="wrap">
-  <div id="scroll"></div>
-</div>
 
 </body>
 </html>
