@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>DISPATCH PENDING</title>
+<title>DISPATCH PLAN</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="300">
 
@@ -22,12 +22,12 @@ header{
 }
 
 h1{
-  font-size:40px;
+  font-size:36px;
   margin:0;
 }
 
 #totalQty{
-  font-size:28px;
+  font-size:26px;
   background:rgba(255,255,255,0.2);
   padding:10px 25px;
   border-radius:30px;
@@ -46,18 +46,18 @@ h1{
 table{
   width:100%;
   border-collapse:collapse;
-  font-size:20px;
+  font-size:18px;
 }
 
 th{
   background:rgba(0,0,0,0.7);
-  padding:12px;
+  padding:10px;
   position:sticky;
   top:0;
 }
 
 td{
-  padding:12px;
+  padding:10px;
   text-align:center;
 }
 
@@ -66,7 +66,7 @@ tr:nth-child(even){
 }
 
 .badge{
-  padding:6px 15px;
+  padding:5px 12px;
   border-radius:20px;
   font-weight:bold;
 }
@@ -97,23 +97,19 @@ function parseCSV(text){
   return text.split("\n").map(row => row.split(","));
 }
 
-// UNIVERSAL DATE PARSER (Handles Google serial + all formats)
 function parseDate(value){
   if(!value) return null;
 
   value = value.trim();
 
-  // 1️⃣ Google serial date number
   if(!isNaN(value)){
     const excelDate = parseInt(value);
     return new Date((excelDate - 25569) * 86400 * 1000);
   }
 
-  // 2️⃣ Normal JS parsing
   let d = new Date(value);
   if(!isNaN(d)) return d;
 
-  // 3️⃣ DD/MM/YYYY or DD-MM-YYYY
   let parts = value.split(/[\/\-]/);
   if(parts.length === 3){
     return new Date(parts[2], parts[1]-1, parts[0]);
@@ -127,6 +123,8 @@ fetch(SHEET_URL)
 .then(csv => {
 
   const rows = parseCSV(csv.trim());
+
+  rows.shift(); // remove title row
   rows.shift(); // remove header row
 
   let totalQty = 0;
@@ -137,10 +135,10 @@ fetch(SHEET_URL)
 
   rows.forEach(r => {
 
-    if(r.length < 7) return;
+    if(r.length < 8) return;
 
-    const qty = parseInt(r[5]);
-    const date = parseDate(r[6]);
+    const qty = parseInt(r[7]);
+    const date = parseDate(r[2]);
 
     if(isNaN(qty) || !date) return;
 
@@ -153,9 +151,10 @@ fetch(SHEET_URL)
   document.getElementById("totalQty").innerText = "Total Qty: " + totalQty;
 
   let tableHTML = "<table><tr>"+
-    "<th>Sl No</th><th>Customer</th><th>Item Code</th>"+
-    "<th>Item Name</th><th>Product</th><th>Qty</th>"+
-    "<th>Dispatch Date</th><th>Status</th></tr>";
+    "<th>SL NO</th><th>CUSTOMER</th><th>SCHEDULE DATE</th>"+
+    "<th>ITEM CODE</th><th>ITEM NAME</th>"+
+    "<th>PRODUCT</th><th>PROJECT MANAGER</th>"+
+    "<th>SCH QTY</th><th>STATUS</th></tr>";
 
   processedRows.forEach(item => {
 
@@ -184,13 +183,13 @@ fetch(SHEET_URL)
       <td>${r[3]}</td>
       <td>${r[4]}</td>
       <td>${r[5]}</td>
-      <td>${d.toLocaleDateString()}</td>
+      <td>${r[6]}</td>
+      <td>${r[7]}</td>
       <td>${statusBadge}</td>
     </tr>`;
   });
 
   tableHTML += "</table>";
-
   document.getElementById("scroll").innerHTML = tableHTML;
 
 })
@@ -204,7 +203,7 @@ fetch(SHEET_URL)
 <body>
 
 <header>
-  <h1>DISPATCH PENDING</h1>
+  <h1>DAILY DISPATCH PLAN</h1>
   <div id="totalQty">Loading...</div>
 </header>
 
