@@ -13,40 +13,47 @@ body{
   color:white;
 }
 
+/* HEADER */
 header{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  padding:20px 40px;
+  padding:30px 60px;
   background:rgba(255,255,255,0.08);
 }
 
-h1{margin:0;font-size:26px;}
+h1{
+  margin:0;
+  font-size:48px;   /* Increased */
+  letter-spacing:2px;
+}
 
 #totalQty{
-  font-size:18px;
+  font-size:28px;   /* Increased */
   background:rgba(255,255,255,0.2);
-  padding:6px 15px;
-  border-radius:20px;
+  padding:12px 25px;
+  border-radius:30px;
   font-weight:bold;
 }
 
+/* TABLE CONTAINER */
 #tableContainer{
-  margin:20px 40px;
+  margin:30px 60px;
   background:rgba(255,255,255,0.08);
-  padding:20px;
-  border-radius:15px;
+  padding:30px;
+  border-radius:20px;
   overflow:auto;
 }
 
+/* TABLE */
 table{
   width:100%;
   border-collapse:collapse;
-  font-size:15px;
+  font-size:26px;   /* Increased from 15px */
 }
 
 th, td{
-  padding:8px;
+  padding:18px;     /* Increased spacing */
   text-align:center;
   border-bottom:1px solid rgba(255,255,255,0.15);
 }
@@ -55,10 +62,10 @@ th{
   background:#000;
   position:sticky;
   top:0;
+  font-size:28px;
 }
 
 /* STATUS COLORS */
-
 .today{
   background:#ffeb3b !important;
   color:#000 !important;
@@ -78,7 +85,7 @@ th{
 
 .error{
   color:red;
-  font-size:18px;
+  font-size:24px;
 }
 
 </style>
@@ -118,7 +125,6 @@ function parseDate(value){
   const month = months[parts[1].toLowerCase()];
   if(month === undefined) return null;
 
-  // Auto detect year
   const currentYear = new Date().getFullYear();
   return new Date(currentYear, month, day);
 }
