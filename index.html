@@ -24,12 +24,12 @@ header{
 
 h1{
   margin:0;
-  font-size:48px;   /* Increased */
+  font-size:48px;
   letter-spacing:2px;
 }
 
 #totalQty{
-  font-size:28px;   /* Increased */
+  font-size:28px;
   background:rgba(255,255,255,0.2);
   padding:12px 25px;
   border-radius:30px;
@@ -45,24 +45,29 @@ h1{
   overflow:auto;
 }
 
-/* TABLE */
+/* TABLE - FORCED COLORS */
 table{
   width:100%;
   border-collapse:collapse;
-  font-size:26px;   /* Increased from 15px */
-}
-
-th, td{
-  padding:18px;     /* Increased spacing */
-  text-align:center;
-  border-bottom:1px solid rgba(255,255,255,0.15);
+  font-size:26px;
+  background:#ffffff;      /* White background */
+  color:#000000;           /* Black text */
 }
 
 th{
-  background:#000;
+  background:#000000;
+  color:#ffffff;
   position:sticky;
   top:0;
   font-size:28px;
+  padding:18px;
+}
+
+td{
+  padding:18px;
+  text-align:center;
+  border-bottom:1px solid #dddddd;
+  color:#000000 !important;   /* Force black text */
 }
 
 /* STATUS COLORS */
