@@ -141,7 +141,29 @@ fetch(SHEET_URL)
 })
 .then(data => {
 
-  const rows = data.split("\n").map(r => r.split(","));
+  // ✅ SAFE CSV PARSER (Handles commas inside text)
+  const rows = data.split("\n").map(row => {
+    const result = [];
+    let current = '';
+    let insideQuotes = false;
+
+    for (let char of row) {
+      if (char === '"') {
+        insideQuotes = !insideQuotes;
+      } 
+      else if (char === ',' && !insideQuotes) {
+        result.push(current);
+        current = '';
+      } 
+      else {
+        current += char;
+      }
+    }
+
+    result.push(current);
+    return result;
+  });
+
   rows.splice(0,2);
 
   let totalQty = 0;
@@ -193,7 +215,6 @@ fetch(SHEET_URL)
 
     html += "<tr class='"+rowClass+"'>";
 
-    // Show first 9 columns including REMARKS
     for(let i=0;i<9;i++){
       html += "<td>"+clean(r[i])+"</td>";
     }
