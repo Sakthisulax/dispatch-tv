@@ -29,7 +29,7 @@ h1{
 }
 
 #totalQty{
-  font-size:28px;
+  font-size:30px;
   background:rgba(255,255,255,0.2);
   padding:12px 25px;
   border-radius:30px;
@@ -45,13 +45,13 @@ h1{
   overflow:auto;
 }
 
-/* TABLE - FORCED COLORS */
+/* TABLE */
 table{
   width:100%;
   border-collapse:collapse;
-  font-size:26px;
-  background:#ffffff;      /* White background */
-  color:#000000;           /* Black text */
+  font-size:28px;
+  background:#ffffff;
+  color:#000000;
 }
 
 th{
@@ -67,7 +67,7 @@ td{
   padding:18px;
   text-align:center;
   border-bottom:1px solid #dddddd;
-  color:#000000 !important;   /* Force black text */
+  color:#000000 !important;
 }
 
 /* STATUS COLORS */
@@ -147,14 +147,25 @@ fetch(SHEET_URL)
   let totalQty = 0;
 
   let html = "<table>";
-  html += "<tr><th>SI NO</th><th>CUSTOMER</th><th>SCHEDULE DATE</th><th>ITEM CODE</th><th>ITEM NAME</th><th>PRODUCT</th><th>PROJECT MANAGER</th><th>SCH QTY</th><th>STATUS</th></tr>";
+  html += "<tr>\
+  <th>SI NO</th>\
+  <th>CUSTOMER</th>\
+  <th>SCHEDULE DATE</th>\
+  <th>ITEM CODE</th>\
+  <th>ITEM NAME</th>\
+  <th>PRODUCT</th>\
+  <th>PROJECT PROGRAM MANAGER</th>\
+  <th>SCH QTY</th>\
+  <th>REMARKS</th>\
+  <th>STATUS</th>\
+  </tr>";
 
   const today = new Date();
   today.setHours(0,0,0,0);
 
   rows.forEach(r => {
 
-    if(r.length < 8) return;
+    if(r.length < 9) return;
     if(!clean(r[0])) return;
 
     const qty = parseInt(clean(r[7]));
@@ -181,9 +192,12 @@ fetch(SHEET_URL)
     }
 
     html += "<tr class='"+rowClass+"'>";
-    for(let i=0;i<8;i++){
+
+    // Show first 9 columns including REMARKS
+    for(let i=0;i<9;i++){
       html += "<td>"+clean(r[i])+"</td>";
     }
+
     html += "<td>"+status+"</td></tr>";
   });
 
