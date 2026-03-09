@@ -14,8 +14,6 @@ background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
 color:white;
 }
 
-/* HEADER */
-
 header{
 display:flex;
 justify-content:space-between;
@@ -37,8 +35,6 @@ padding:12px 25px;
 border-radius:30px;
 font-weight:bold;
 }
-
-/* TABLE */
 
 #tableContainer{
 margin:30px 60px;
@@ -91,6 +87,14 @@ animation:blinkRow 1s infinite;
 .upcoming{
 background:#2e7d32 !important;
 color:#fff !important;
+}
+
+/* DISPATCHED FULL ROW */
+
+.dispatched{
+background:#00c853 !important;
+color:#ffffff !important;
+font-weight:bold;
 }
 
 /* BLINK */
@@ -168,9 +172,7 @@ return response.text();
 const rows=data.split("\n").map(row=>{
 
 const result=[];
-
 let current='';
-
 let insideQuotes=false;
 
 for(let char of row){
@@ -221,20 +223,28 @@ today.setHours(0,0,0,0);
 rows.forEach(r=>{
 
 if(r.length<9) return;
-
 if(!clean(r[0])) return;
 
 const qty=parseInt(clean(r[7]));
 const date=parseDate(r[2]);
 
-if(isNaN(qty) || !date) return;
+if(isNaN(qty)||!date) return;
 
 totalQty+=qty;
+
+let remark=clean(r[8]).toLowerCase();
 
 let status="";
 let rowClass="";
 
-if(date<today){
+if(remark==="dispatched"){
+
+rowClass="dispatched";
+status="DISPATCHED";
+
+}
+
+else if(date<today){
 
 status="OVERDUE";
 rowClass="overdue";
@@ -269,6 +279,12 @@ html+="<td style='background:#2ecc71 !important;color:white;font-weight:bold;'>"
 
 }
 
+else if(value.toLowerCase()==="dispatched"){
+
+html+="<td style='background:#00c853 !important;color:white;font-weight:bold;'>"+value+"</td>";
+
+}
+
 else{
 
 html+="<td style='background:#e74c3c !important;color:white;font-weight:bold;'>"+value+"</td>";
@@ -292,7 +308,6 @@ html+="<td>"+status+"</td></tr>";
 html+="</table>";
 
 document.getElementById("tableContainer").innerHTML=html;
-
 document.getElementById("totalQty").innerText="Total Qty: "+totalQty;
 
 startAutoScroll();
@@ -302,7 +317,6 @@ startAutoScroll();
 .catch(error=>{
 
 document.getElementById("tableContainer").innerHTML="<div class='error'>Unable to load Google Sheet</div>";
-
 console.log(error);
 
 });
@@ -318,9 +332,7 @@ setInterval(function(){
 container.scrollTop+=scrollSpeed;
 
 if(container.scrollTop+container.clientHeight>=container.scrollHeight){
-
 container.scrollTop=0;
-
 }
 
 },50);
