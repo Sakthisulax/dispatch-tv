@@ -8,7 +8,7 @@
 <style>
 
 body{
-font-family:Arial, Helvetica, sans-serif;
+font-family: Arial;
 background:#111;
 color:white;
 margin:0;
@@ -23,12 +23,12 @@ margin-bottom:20px;
 table{
 width:100%;
 border-collapse:collapse;
-font-size:20px;
+font-size:22px;
 }
 
 th,td{
-padding:10px;
 border:1px solid #444;
+padding:12px;
 text-align:center;
 }
 
@@ -37,7 +37,7 @@ background:#222;
 }
 
 tr:nth-child(even){
-background:#1b1b1b;
+background:#1a1a1a;
 }
 
 .ready{
@@ -65,7 +65,7 @@ font-weight:bold;
 
 <h1>DISPATCH STATUS</h1>
 
-<table id="dispatchTable">
+<table>
 <thead>
 <tr>
 <th>ORDER</th>
@@ -94,20 +94,20 @@ return (v || "").toString();
 function loadData(){
 
 fetch(sheetURL)
-.then(res=>res.json())
-.then(data=>{
+.then(res => res.json())
+.then(data => {
 
 let html="";
 
-data.forEach(r=>{
+data.forEach(r => {
 
-let order = clean(r.ORDER);
-let style = clean(r.STYLE);
-let color = clean(r.COLOR);
-let qty = clean(r.QTY);
-let date = clean(r.DATE);
+let order = clean(r.Order);
+let style = clean(r.Style);
+let color = clean(r.Color);
+let qty = clean(r.Qty);
+let date = clean(r.Date);
 
-let remark = clean(r.REMARKS).toLowerCase().trim();
+let remark = clean(r.Remarks).toLowerCase().trim();
 
 let rowClass="";
 let remarkClass="";
@@ -124,7 +124,7 @@ else{
 remarkClass="notready";
 }
 
-html+=`
+html += `
 <tr class="${rowClass}">
 <td>${order}</td>
 <td>${style}</td>
@@ -137,7 +137,7 @@ html+=`
 
 });
 
-document.getElementById("tableBody").innerHTML=html;
+document.getElementById("tableBody").innerHTML = html;
 
 });
 
