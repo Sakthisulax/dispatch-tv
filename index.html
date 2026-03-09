@@ -8,7 +8,7 @@
 <style>
 
 body{
-font-family: Arial;
+font-family: Arial, sans-serif;
 background:#111;
 color:white;
 margin:0;
@@ -37,22 +37,25 @@ background:#222;
 }
 
 tr:nth-child(even){
-background:#1a1a1a;
+background:#1b1b1b;
 }
 
+/* READY remark */
 .ready{
-background:#2e7d32;
+background:#2e7d32 !important;
 color:white;
 font-weight:bold;
 }
 
+/* NOT READY remark */
 .notready{
-background:#c62828;
+background:#c62828 !important;
 color:white;
 font-weight:bold;
 }
 
-.dispatched{
+/* DISPATCHED full row */
+.dispatched td{
 background:#00c853 !important;
 color:white !important;
 font-weight:bold;
@@ -86,28 +89,23 @@ font-weight:bold;
 const sheetURL =
 "https://opensheet.elk.sh/YOUR_SHEET_ID/Sheet1";
 
-
-function clean(v){
-return (v || "").toString();
-}
-
 function loadData(){
 
 fetch(sheetURL)
-.then(res => res.json())
-.then(data => {
+.then(res=>res.json())
+.then(data=>{
 
 let html="";
 
-data.forEach(r => {
+data.forEach(r=>{
 
-let order = clean(r.Order);
-let style = clean(r.Style);
-let color = clean(r.Color);
-let qty = clean(r.Qty);
-let date = clean(r.Date);
+let order = r.Order || "";
+let style = r.Style || "";
+let color = r.Color || "";
+let qty = r.Qty || "";
+let date = r.Date || "";
 
-let remark = clean(r.Remarks).toLowerCase().trim();
+let remark = (r.Remarks || "").toString().toLowerCase().trim();
 
 let rowClass="";
 let remarkClass="";
@@ -115,11 +113,9 @@ let remarkClass="";
 if(remark.includes("dispatched")){
 rowClass="dispatched";
 }
-
 else if(remark.includes("ready")){
 remarkClass="ready";
 }
-
 else{
 remarkClass="notready";
 }
@@ -145,6 +141,7 @@ document.getElementById("tableBody").innerHTML = html;
 
 loadData();
 
+/* auto refresh every 10 sec */
 setInterval(loadData,10000);
 
 </script>
