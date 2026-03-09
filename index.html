@@ -13,7 +13,6 @@ body{
   color:white;
 }
 
-/* HEADER */
 header{
   display:flex;
   justify-content:space-between;
@@ -36,7 +35,6 @@ h1{
   font-weight:bold;
 }
 
-/* TABLE CONTAINER */
 #tableContainer{
   margin:30px 60px;
   background:rgba(255,255,255,0.08);
@@ -46,7 +44,6 @@ h1{
   height:70vh;
 }
 
-/* TABLE */
 table{
   width:100%;
   border-collapse:collapse;
@@ -71,7 +68,6 @@ td{
   color:#000000 !important;
 }
 
-/* STATUS COLORS */
 .today{
   background:#ffeb3b !important;
   color:#000 !important;
@@ -82,6 +78,7 @@ td{
   background:#c62828 !important;
   color:#fff !important;
   font-weight:bold;
+  animation:blinkRow 1s infinite;
 }
 
 .upcoming{
@@ -89,170 +86,220 @@ td{
   color:#fff !important;
 }
 
+@keyframes blinkRow{
+0%{opacity:1;}
+50%{opacity:0.3;}
+100%{opacity:1;}
+}
+
 .error{
   color:red;
   font-size:24px;
 }
-
 </style>
 </head>
 
 <body>
 
 <header>
-  <h1>DAILY DISPATCH PLAN</h1>
-  <div id="totalQty">Loading...</div>
+<h1>DAILY DISPATCH PLAN</h1>
+<div id="totalQty">Loading...</div>
 </header>
 
 <div id="tableContainer">Loading data...</div>
 
 <script>
 
-const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
+const SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
 function clean(v){
-  return v ? v.replace(/"/g,'').trim() : "";
+return v?v.replace(/"/g,'').trim():"";
 }
 
 function parseDate(value){
-  value = clean(value);
-  if(!value) return null;
 
-  const parts = value.split("-");
-  if(parts.length !== 2) return null;
+value=clean(value);
+if(!value)return null;
 
-  const day = parseInt(parts[0]);
+const parts=value.split("-");
+if(parts.length!==2)return null;
 
-  const months = {
-    jan:0,feb:1,mar:2,apr:3,may:4,jun:5,
-    jul:6,aug:7,sep:8,oct:9,nov:10,dec:11
-  };
+const day=parseInt(parts[0]);
 
-  const month = months[parts[1].toLowerCase()];
-  if(month === undefined) return null;
+const months={
+jan:0,feb:1,mar:2,apr:3,may:4,jun:5,
+jul:6,aug:7,sep:8,oct:9,nov:10,dec:11
+};
 
-  const currentYear = new Date().getFullYear();
-  return new Date(currentYear, month, day);
+const month=months[parts[1].toLowerCase()];
+if(month===undefined)return null;
+
+const currentYear=new Date().getFullYear();
+
+return new Date(currentYear,month,day);
+
 }
 
 fetch(SHEET_URL)
-.then(response => {
-  if(!response.ok) throw new Error("Sheet not accessible");
-  return response.text();
-})
-.then(data => {
 
-  const rows = data.split("\n").map(row => {
-    const result = [];
-    let current = '';
-    let insideQuotes = false;
+.then(response=>{
 
-    for (let char of row) {
-      if (char === '"') {
-        insideQuotes = !insideQuotes;
-      } 
-      else if (char === ',' && !insideQuotes) {
-        result.push(current);
-        current = '';
-      } 
-      else {
-        current += char;
-      }
-    }
+if(!response.ok)throw new Error("Sheet not accessible");
 
-    result.push(current);
-    return result;
-  });
-
-  rows.splice(0,2);
-
-  let totalQty = 0;
-
-  let html = "<table>";
-  html += "<tr>\
-  <th>SI NO</th>\
-  <th>CUSTOMER</th>\
-  <th>SCHEDULE DATE</th>\
-  <th>ITEM CODE</th>\
-  <th>ITEM NAME</th>\
-  <th>PRODUCT</th>\
-  <th>PROJECT PROGRAM MANAGER</th>\
-  <th>SCH QTY</th>\
-  <th>REMARKS</th>\
-  <th>STATUS</th>\
-  </tr>";
-
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  rows.forEach(r => {
-
-    if(r.length < 9) return;
-    if(!clean(r[0])) return;
-
-    const qty = parseInt(clean(r[7]));
-    const date = parseDate(r[2]);
-
-    if(isNaN(qty) || !date) return;
-
-    totalQty += qty;
-
-    let status = "";
-    let rowClass = "";
-
-    if(date < today){
-      status = "OVERDUE";
-      rowClass = "overdue";
-    }
-    else if(date.getTime() === today.getTime()){
-      status = "TODAY";
-      rowClass = "today";
-    }
-    else{
-      status = "UPCOMING";
-      rowClass = "upcoming";
-    }
-
-    html += "<tr class='"+rowClass+"'>";
-
-    for(let i=0;i<9;i++){
-      html += "<td>"+clean(r[i])+"</td>";
-    }
-
-    html += "<td>"+status+"</td></tr>";
-  });
-
-  html += "</table>";
-
-  document.getElementById("tableContainer").innerHTML = html;
-  document.getElementById("totalQty").innerText = "Total Qty: " + totalQty;
-
-  startAutoScroll(); // start scrolling after table loads
+return response.text();
 
 })
-.catch(error => {
-  document.getElementById("tableContainer").innerHTML = "<div class='error'>Unable to load Google Sheet. Check Publish settings.</div>";
-  console.log(error);
+
+.then(data=>{
+
+const rows=data.split("\n").map(row=>{
+
+const result=[];
+let current='';
+let insideQuotes=false;
+
+for(let char of row){
+
+if(char==='"'){
+insideQuotes=!insideQuotes;
+}
+
+else if(char===','&&!insideQuotes){
+result.push(current);
+current='';
+}
+
+else{
+current+=char;
+}
+
+}
+
+result.push(current);
+
+return result;
+
 });
 
+rows.splice(0,2);
 
-/* AUTO SCROLL FUNCTION */
+let totalQty=0;
+
+let html="<table>";
+
+html+="<tr>\
+<th>SI NO</th>\
+<th>CUSTOMER</th>\
+<th>SCHEDULE DATE</th>\
+<th>ITEM CODE</th>\
+<th>ITEM NAME</th>\
+<th>PRODUCT</th>\
+<th>PROJECT PROGRAM MANAGER</th>\
+<th>SCH QTY</th>\
+<th>REMARKS</th>\
+<th>STATUS</th>\
+</tr>";
+
+const today=new Date();
+today.setHours(0,0,0,0);
+
+rows.forEach(r=>{
+
+if(r.length<9)return;
+if(!clean(r[0]))return;
+
+const qty=parseInt(clean(r[7]));
+const date=parseDate(r[2]);
+
+if(isNaN(qty)||!date)return;
+
+totalQty+=qty;
+
+let status="";
+let rowClass="";
+
+if(date<today){
+status="OVERDUE";
+rowClass="overdue";
+}
+
+else if(date.getTime()===today.getTime()){
+status="TODAY";
+rowClass="today";
+}
+
+else{
+status="UPCOMING";
+rowClass="upcoming";
+}
+
+html+="<tr class='"+rowClass+"'>";
+
+for(let i=0;i<9;i++){
+
+let value=clean(r[i]);
+
+if(i===8){
+
+if(value.toLowerCase()==="ready"){
+
+html+="<td style='background:#2ecc71;color:white;font-weight:bold;'>"+value+"</td>";
+
+}else{
+
+html+="<td style='background:#e74c3c;color:white;font-weight:bold;'>"+value+"</td>";
+
+}
+
+}
+
+else{
+
+html+="<td>"+value+"</td>";
+
+}
+
+}
+
+html+="<td>"+status+"</td></tr>";
+
+});
+
+html+="</table>";
+
+document.getElementById("tableContainer").innerHTML=html;
+
+document.getElementById("totalQty").innerText="Total Qty: "+totalQty;
+
+startAutoScroll();
+
+})
+
+.catch(error=>{
+
+document.getElementById("tableContainer").innerHTML="<div class='error'>Unable to load Google Sheet</div>";
+
+console.log(error);
+
+});
 
 function startAutoScroll(){
 
-  const container = document.getElementById("tableContainer");
+const container=document.getElementById("tableContainer");
 
-  let scrollSpeed = 1; 
+let scrollSpeed=1;
 
-  setInterval(function(){
+setInterval(function(){
 
-    container.scrollTop += scrollSpeed;
+container.scrollTop+=scrollSpeed;
 
-    if(container.scrollTop + container.clientHeight >= container.scrollHeight){
-        container.scrollTop = 0;
-    }
+if(container.scrollTop+container.clientHeight>=container.scrollHeight){
 
-  },50);
+container.scrollTop=0;
+
+}
+
+},50);
 
 }
 
