@@ -133,11 +133,9 @@ return v ? v.replace(/"/g,'').trim() : "";
 function parseDate(value){
 
 value=clean(value);
-
 if(!value) return null;
 
 const parts=value.split("-");
-
 if(parts.length!==2) return null;
 
 const day=parseInt(parts[0]);
@@ -148,11 +146,9 @@ jul:6,aug:7,sep:8,oct:9,nov:10,dec:11
 };
 
 const month=months[parts[1].toLowerCase()];
-
 if(month===undefined) return null;
 
 const currentYear=new Date().getFullYear();
-
 return new Date(currentYear,month,day);
 
 }
@@ -160,11 +156,8 @@ return new Date(currentYear,month,day);
 fetch(SHEET_URL)
 
 .then(response=>{
-
 if(!response.ok) throw new Error("Sheet not accessible");
-
 return response.text();
-
 })
 
 .then(data=>{
@@ -193,7 +186,6 @@ current+=char;
 }
 
 result.push(current);
-
 return result;
 
 });
@@ -232,7 +224,7 @@ if(isNaN(qty)||!date) return;
 
 totalQty+=qty;
 
-let remark=clean(r[8]).toLowerCase();
+let remark=clean(r[8]).toLowerCase().trim();
 
 let status="";
 let rowClass="";
@@ -273,13 +265,15 @@ let value=clean(r[i]);
 
 if(i===8){
 
-if(value.toLowerCase()==="ready"){
+let v=value.toLowerCase().trim();
+
+if(v==="ready"){
 
 html+="<td style='background:#2ecc71 !important;color:white;font-weight:bold;'>"+value+"</td>";
 
 }
 
-else if(value.toLowerCase()==="dispatched"){
+else if(v==="dispatched"){
 
 html+="<td style='background:#00c853 !important;color:white;font-weight:bold;'>"+value+"</td>";
 
@@ -315,10 +309,8 @@ startAutoScroll();
 })
 
 .catch(error=>{
-
 document.getElementById("tableContainer").innerHTML="<div class='error'>Unable to load Google Sheet</div>";
 console.log(error);
-
 });
 
 function startAutoScroll(){
