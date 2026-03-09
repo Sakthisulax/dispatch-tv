@@ -6,85 +6,94 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
+
 body{
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-  color:white;
+margin:0;
+font-family:Arial, sans-serif;
+background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+color:white;
 }
 
+/* HEADER */
+
 header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:30px 60px;
-  background:rgba(255,255,255,0.08);
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:30px 60px;
+background:rgba(255,255,255,0.08);
 }
 
 h1{
-  margin:0;
-  font-size:48px;
-  letter-spacing:2px;
+margin:0;
+font-size:48px;
+letter-spacing:2px;
 }
 
 #totalQty{
-  font-size:30px;
-  background:rgba(255,255,255,0.2);
-  padding:12px 25px;
-  border-radius:30px;
-  font-weight:bold;
+font-size:30px;
+background:rgba(255,255,255,0.2);
+padding:12px 25px;
+border-radius:30px;
+font-weight:bold;
 }
 
+/* TABLE */
+
 #tableContainer{
-  margin:30px 60px;
-  background:rgba(255,255,255,0.08);
-  padding:30px;
-  border-radius:20px;
-  overflow:hidden;
-  height:70vh;
+margin:30px 60px;
+background:rgba(255,255,255,0.08);
+padding:30px;
+border-radius:20px;
+overflow:hidden;
+height:70vh;
 }
 
 table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:28px;
-  background:#ffffff;
-  color:#000000;
+width:100%;
+border-collapse:collapse;
+font-size:28px;
+background:#ffffff;
+color:#000000;
 }
 
 th{
-  background:#000000;
-  color:#ffffff;
-  position:sticky;
-  top:0;
-  font-size:28px;
-  padding:18px;
+background:#000000;
+color:#ffffff;
+position:sticky;
+top:0;
+font-size:28px;
+padding:18px;
 }
 
 td{
-  padding:18px;
-  text-align:center;
-  border-bottom:1px solid #dddddd;
-  color:#000000 !important;
+padding:18px;
+text-align:center;
+border-bottom:1px solid #dddddd;
+color:#000000 !important;
 }
 
+/* STATUS COLORS */
+
 .today{
-  background:#ffeb3b !important;
-  color:#000 !important;
-  font-weight:bold;
+background:#ffeb3b !important;
+color:#000 !important;
+font-weight:bold;
 }
 
 .overdue{
-  background:#c62828 !important;
-  color:#fff !important;
-  font-weight:bold;
-  animation:blinkRow 1s infinite;
+background:#c62828 !important;
+color:#fff !important;
+font-weight:bold;
+animation:blinkRow 1s infinite;
 }
 
 .upcoming{
-  background:#2e7d32 !important;
-  color:#fff !important;
+background:#2e7d32 !important;
+color:#fff !important;
 }
+
+/* BLINK */
 
 @keyframes blinkRow{
 0%{opacity:1;}
@@ -93,9 +102,10 @@ td{
 }
 
 .error{
-  color:red;
-  font-size:24px;
+color:red;
+font-size:24px;
 }
+
 </style>
 </head>
 
@@ -113,16 +123,18 @@ td{
 const SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
 function clean(v){
-return v?v.replace(/"/g,'').trim():"";
+return v ? v.replace(/"/g,'').trim() : "";
 }
 
 function parseDate(value){
 
 value=clean(value);
-if(!value)return null;
+
+if(!value) return null;
 
 const parts=value.split("-");
-if(parts.length!==2)return null;
+
+if(parts.length!==2) return null;
 
 const day=parseInt(parts[0]);
 
@@ -132,7 +144,8 @@ jul:6,aug:7,sep:8,oct:9,nov:10,dec:11
 };
 
 const month=months[parts[1].toLowerCase()];
-if(month===undefined)return null;
+
+if(month===undefined) return null;
 
 const currentYear=new Date().getFullYear();
 
@@ -144,7 +157,7 @@ fetch(SHEET_URL)
 
 .then(response=>{
 
-if(!response.ok)throw new Error("Sheet not accessible");
+if(!response.ok) throw new Error("Sheet not accessible");
 
 return response.text();
 
@@ -155,7 +168,9 @@ return response.text();
 const rows=data.split("\n").map(row=>{
 
 const result=[];
+
 let current='';
+
 let insideQuotes=false;
 
 for(let char of row){
@@ -164,7 +179,7 @@ if(char==='"'){
 insideQuotes=!insideQuotes;
 }
 
-else if(char===','&&!insideQuotes){
+else if(char===',' && !insideQuotes){
 result.push(current);
 current='';
 }
@@ -205,13 +220,14 @@ today.setHours(0,0,0,0);
 
 rows.forEach(r=>{
 
-if(r.length<9)return;
-if(!clean(r[0]))return;
+if(r.length<9) return;
+
+if(!clean(r[0])) return;
 
 const qty=parseInt(clean(r[7]));
 const date=parseDate(r[2]);
 
-if(isNaN(qty)||!date)return;
+if(isNaN(qty) || !date) return;
 
 totalQty+=qty;
 
@@ -219,18 +235,24 @@ let status="";
 let rowClass="";
 
 if(date<today){
+
 status="OVERDUE";
 rowClass="overdue";
+
 }
 
 else if(date.getTime()===today.getTime()){
+
 status="TODAY";
 rowClass="today";
+
 }
 
 else{
+
 status="UPCOMING";
 rowClass="upcoming";
+
 }
 
 html+="<tr class='"+rowClass+"'>";
@@ -243,11 +265,13 @@ if(i===8){
 
 if(value.toLowerCase()==="ready"){
 
-html+="<td style='background:#2ecc71;color:white;font-weight:bold;'>"+value+"</td>";
+html+="<td style='background:#2ecc71 !important;color:white;font-weight:bold;'>"+value+"</td>";
 
-}else{
+}
 
-html+="<td style='background:#e74c3c;color:white;font-weight:bold;'>"+value+"</td>";
+else{
+
+html+="<td style='background:#e74c3c !important;color:white;font-weight:bold;'>"+value+"</td>";
 
 }
 
