@@ -81,7 +81,6 @@ font-weight:bold;
 background:#c62828 !important;
 color:#fff !important;
 font-weight:bold;
-animation:blinkRow 1s infinite;
 }
 
 .upcoming{
@@ -97,7 +96,11 @@ color:#ffffff !important;
 font-weight:bold;
 }
 
-/* BLINK */
+/* BLINK ONLY CELL */
+
+.blink{
+animation:blinkRow 1s infinite;
+}
 
 @keyframes blinkRow{
 0%{opacity:1;}
@@ -160,17 +163,13 @@ return new Date(currentYear,month,day);
 fetch(SHEET_URL)
 
 .then(response=>{
-
 if(!response.ok) throw new Error("Sheet not accessible");
-
 return response.text();
-
 })
 
 .then(data=>{
 
 const rows=data.split("\n").map(row=>{
-
 const result=[];
 let current='';
 let insideQuotes=false;
@@ -180,22 +179,16 @@ for(let char of row){
 if(char==='"'){
 insideQuotes=!insideQuotes;
 }
-
 else if(char===',' && !insideQuotes){
 result.push(current);
 current='';
 }
-
 else{
 current+=char;
 }
-
 }
-
 result.push(current);
-
 return result;
-
 });
 
 rows.splice(0,2);
@@ -238,31 +231,20 @@ let status="";
 let rowClass="";
 
 if(remark==="dispatched"){
-
 rowClass="dispatched";
 status="DISPATCHED";
-
 }
-
 else if(date<today){
-
 status="OVERDUE";
 rowClass="overdue";
-
 }
-
 else if(date.getTime()===today.getTime()){
-
 status="TODAY";
 rowClass="today";
-
 }
-
 else{
-
 status="UPCOMING";
 rowClass="upcoming";
-
 }
 
 html+="<tr class='"+rowClass+"'>";
@@ -273,30 +255,26 @@ let value=clean(r[i]);
 
 if(i===8){
 
+let cellClass="";
+
+// blink only if overdue
+if(rowClass==="overdue"){
+cellClass="blink";
+}
+
 if(value.toLowerCase()==="ready"){
-
-html+="<td style='background:#2ecc71 !important;color:white;font-weight:bold;'>"+value+"</td>";
-
+html+="<td class='"+cellClass+"' style='background:#2ecc71 !important;color:white;font-weight:bold;'>"+value+"</td>";
 }
-
 else if(value.toLowerCase()==="dispatched"){
-
 html+="<td style='background:#00c853 !important;color:white;font-weight:bold;'>"+value+"</td>";
-
 }
-
 else{
-
-html+="<td style='background:#e74c3c !important;color:white;font-weight:bold;'>"+value+"</td>";
-
+html+="<td class='"+cellClass+"' style='background:#e74c3c !important;color:white;font-weight:bold;'>"+value+"</td>";
 }
 
 }
-
 else{
-
 html+="<td>"+value+"</td>";
-
 }
 
 }
@@ -315,28 +293,20 @@ startAutoScroll();
 })
 
 .catch(error=>{
-
 document.getElementById("tableContainer").innerHTML="<div class='error'>Unable to load Google Sheet</div>";
 console.log(error);
-
 });
 
 function startAutoScroll(){
-
 const container=document.getElementById("tableContainer");
-
 let scrollSpeed=1;
 
 setInterval(function(){
-
 container.scrollTop+=scrollSpeed;
-
 if(container.scrollTop+container.clientHeight>=container.scrollHeight){
 container.scrollTop=0;
 }
-
 },50);
-
 }
 
 </script>
