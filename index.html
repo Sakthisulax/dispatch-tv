@@ -78,8 +78,8 @@ font-weight:bold;
 }
 
 .overdue{
-background:#c62828 !important;
-color:#fff !important;
+/* removed red background */
+color:#000 !important;
 font-weight:bold;
 }
 
@@ -96,7 +96,7 @@ color:#ffffff !important;
 font-weight:bold;
 }
 
-/* BLINK ONLY CELL */
+/* BLINK ONLY REMARK CELL */
 
 .blink{
 animation:blinkRow 1s infinite;
@@ -136,11 +136,9 @@ return v ? v.replace(/"/g,'').trim() : "";
 function parseDate(value){
 
 value=clean(value);
-
 if(!value) return null;
 
 const parts=value.split("-");
-
 if(parts.length!==2) return null;
 
 const day=parseInt(parts[0]);
@@ -151,17 +149,13 @@ jul:6,aug:7,sep:8,oct:9,nov:10,dec:11
 };
 
 const month=months[parts[1].toLowerCase()];
-
 if(month===undefined) return null;
 
 const currentYear=new Date().getFullYear();
-
 return new Date(currentYear,month,day);
-
 }
 
 fetch(SHEET_URL)
-
 .then(response=>{
 if(!response.ok) throw new Error("Sheet not accessible");
 return response.text();
@@ -175,7 +169,6 @@ let current='';
 let insideQuotes=false;
 
 for(let char of row){
-
 if(char==='"'){
 insideQuotes=!insideQuotes;
 }
@@ -263,7 +256,7 @@ cellClass="blink";
 }
 
 if(value.toLowerCase()==="ready"){
-html+="<td class='"+cellClass+"' style='background:#2ecc71 !important;color:white;font-weight:bold;'>"+value+"</td>";
+html+="<td style='background:#2ecc71 !important;color:white;font-weight:bold;'>"+value+"</td>";
 }
 else if(value.toLowerCase()==="dispatched"){
 html+="<td style='background:#00c853 !important;color:white;font-weight:bold;'>"+value+"</td>";
