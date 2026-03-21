@@ -1,177 +1,177 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dispatch TV</title>
-
-    <!-- Chart.js -->
+    <title>DAILY DISPATCH PLAN</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
             margin: 0;
-            background: #000;
+            background: #0b0f14;
             color: white;
             font-family: Arial;
         }
 
         h1 {
             text-align: center;
-            margin: 10px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 22px;
+            font-size: 14px;
         }
 
         th, td {
             border: 1px solid #333;
-            padding: 10px;
+            padding: 5px;
             text-align: center;
         }
 
         th {
-            background: #111;
+            background: yellow;
+            color: black;
         }
 
-        /* 🔥 SMALL GRAPH BOX */
-        .graph-box {
-            position: fixed;
-            right: 10px;
-            bottom: 10px;
-            width: 350px;
-            height: 200px;
-            background: #111;
-            border-radius: 10px;
+        .graph {
+            width: 90%;
+            margin: 20px auto;
+            background: #1c1f26;
             padding: 10px;
-        }
-
-        /* 🔥 SMALL % BOX */
-        .percent-box {
-            position: fixed;
-            right: 10px;
-            bottom: 220px;
-            background: #111;
-            padding: 10px 20px;
             border-radius: 10px;
-            font-size: 20px;
-            color: #00ffcc;
         }
     </style>
 </head>
 
 <body>
 
-<h1>Daily Dispatch Plan</h1>
+<h1>Live Dispatch Dashboard</h1>
 
-<!-- YOUR TABLE -->
-<table id="dispatchTable">
-    <tr>
-        <th>Date</th>
-        <th>Planned</th>
-        <th>Actual</th>
-    </tr>
+<table id="dispatchTable"></table>
 
-    <tr><td>Mon</td><td>120</td><td>100</td></tr>
-    <tr><td>Tue</td><td>150</td><td>140</td></tr>
-    <tr><td>Wed</td><td>130</td><td>120</td></tr>
-    <tr><td>Thu</td><td>170</td><td>150</td></tr>
-    <tr><td>Fri</td><td>160</td><td>155</td></tr>
-</table>
-
-<!-- 🔥 ACHIEVEMENT -->
-<div class="percent-box" id="achievementBox">
-    Achievement: --
-</div>
-
-<!-- 🔥 SMALL GRAPH -->
-<div class="graph-box">
-    <canvas id="smallChart"></canvas>
+<div class="graph">
+    <canvas id="chart"></canvas>
 </div>
 
 <script>
 
-// GET DATA FROM TABLE
-function getTableData() {
-    let table = document.getElementById("dispatchTable");
-    let labels = [];
-    let planned = [];
-    let actual = [];
+const sheetURL = "https://docs.google.com/spreadsheets/d/1-MzOK58kPnIZInwA4tXSTo3-LNIplSvSXSGZoiMRjb4/edit?gid=0#gid=0"; // 🔥 PUT YOUR LINK HERE
+let chart; // ✅ prevent duplicate chart
 
-    for (let i = 1; i < table.rows.length; i++) {
-        labels.push(table.rows[i].cells[0].innerText);
-        planned.push(parseInt(table.rows[i].cells[1].innerText));
-        actual.push(parseInt(table.rows[i].cells[2].innerText));
-    }
-
-    return { labels, planned, actual };
+// FORMAT DATE LIKE 20/Mar
+function formatDate(d) {
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return d.getDate() + "/" + months[d.getMonth()];
 }
 
-const data = getTableData();
+async function loadData() {
 
+    try {
+        let res = await fetch(sheetURL);
+        let data = await res.text();
 
-// SMALL GRAPH (LINE - CLEAN LOOK)
-new Chart(document.getElementById("smallChart"), {
-    type: "line",
-    data: {
-        labels: data.labels,
-        datasets: [
-            {
-                label: "P",
-                data: data.planned,
-                borderColor: "#3498db",
-                tension: 0.3
-            },
-            {
-                label: "A",
-                data: data.actual,
-                borderColor: "#2ecc71",
-                tension: 0.3
-            }
-        ]
-    },
-    options: {
-        plugins: {
-            legend: {
-                labels: {
-                    color: "white",
-                    font: { size: 10 }
+        let rows = data.trim().split("\n").map(r => r.split(","));
+
+        let table = document.getElementById("dispatchTable");
+        table.innerHTML = "";
+
+        // HEADER
+        let header = "<tr>";
+        rows[0].forEach(col => header += `<th>${col}</th>`);
+        header += "</tr>";
+        table.innerHTML += header;
+
+        let today = formatDate(new Date());
+        let yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        let yesterday = formatDate(yesterdayDate);
+
+        let customerData = {};
+
+        // LOOP DATA
+        for (let i = 1; i < rows.length; i++) {
+
+            let row = rows[i];
+            if (row.length < 9) continue;
+
+            let customer = row[1]?.trim();
+            let date = row[2]?.trim();
+            let sch = parseInt(row[7]) || 0;
+            let des = parseInt(row[8]) || 0;
+
+            // ADD TABLE ROW
+            let tr = "<tr>";
+            row.forEach(c => tr += `<td>${c}</td>`);
+            tr += "</tr>";
+            table.innerHTML += tr;
+
+            // FILTER TODAY + YESTERDAY
+            if (date === today || date === yesterday) {
+
+                if (!customerData[customer]) {
+                    customerData[customer] = { sch: 0, des: 0 };
                 }
-            }
-        },
-        scales: {
-            x: {
-                ticks: {
-                    color: "white",
-                    font: { size: 10 }
-                }
-            },
-            y: {
-                ticks: {
-                    color: "white",
-                    font: { size: 10 }
-                }
+
+                customerData[customer].sch += sch;
+                customerData[customer].des += des;
             }
         }
+
+        let customers = Object.keys(customerData);
+        let schData = customers.map(c => customerData[c].sch);
+        let desData = customers.map(c => customerData[c].des);
+
+        // DESTROY OLD CHART (IMPORTANT FIX)
+        if (chart) {
+            chart.destroy();
+        }
+
+        // CREATE GRAPH
+        chart = new Chart(document.getElementById("chart"), {
+            type: "bar",
+            data: {
+                labels: customers,
+                datasets: [
+                    {
+                        label: "SCH QTY",
+                        data: schData,
+                        backgroundColor: "#3498db"
+                    },
+                    {
+                        label: "DES QTY",
+                        data: desData,
+                        backgroundColor: "#e74c3c"
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: { color: "white", font: { size: 14 } }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: "white" }
+                    },
+                    y: {
+                        ticks: { color: "white" }
+                    }
+                }
+            }
+        });
+
+    } catch (err) {
+        console.error("Error loading sheet:", err);
     }
-});
+}
 
+// LOAD FIRST TIME
+loadData();
 
-// CALCULATE %
-let totalPlanned = data.planned.reduce((a,b)=>a+b,0);
-let totalActual = data.actual.reduce((a,b)=>a+b,0);
-
-let percent = ((totalActual / totalPlanned) * 100).toFixed(1);
-
-document.getElementById("achievementBox").innerText =
-    "Achievement: " + percent + "%";
-
-
-// AUTO REFRESH (TV)
-setInterval(() => {
-    location.reload();
-}, 60000);
+// AUTO REFRESH EVERY 60 SEC
+setInterval(loadData, 60000);
 
 </script>
 
