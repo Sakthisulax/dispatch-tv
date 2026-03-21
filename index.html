@@ -1,57 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dispatch TV Dashboard</title>
+    <title>Dispatch TV</title>
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
-            background-color: #111;
+            margin: 0;
+            background: #000;
             color: white;
             font-family: Arial;
-            margin: 0;
-            padding: 20px;
         }
 
         h1 {
             text-align: center;
+            margin: 10px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            font-size: 22px;
         }
 
         th, td {
-            border: 1px solid #444;
+            border: 1px solid #333;
             padding: 10px;
             text-align: center;
-            font-size: 18px;
         }
 
         th {
-            background-color: #222;
+            background: #111;
         }
 
-        .container {
-            display: flex;
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        canvas {
-            background: #1a1a1a;
-            padding: 10px;
+        /* 🔥 SMALL GRAPH BOX */
+        .graph-box {
+            position: fixed;
+            right: 10px;
+            bottom: 10px;
+            width: 350px;
+            height: 200px;
+            background: #111;
             border-radius: 10px;
+            padding: 10px;
         }
 
-        #achievement {
-            text-align: center;
-            font-size: 28px;
-            margin-top: 15px;
+        /* 🔥 SMALL % BOX */
+        .percent-box {
+            position: fixed;
+            right: 10px;
+            bottom: 220px;
+            background: #111;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 20px;
             color: #00ffcc;
         }
     </style>
@@ -61,7 +65,7 @@
 
 <h1>Daily Dispatch Plan</h1>
 
-<!-- TABLE -->
+<!-- YOUR TABLE -->
 <table id="dispatchTable">
     <tr>
         <th>Date</th>
@@ -76,18 +80,19 @@
     <tr><td>Fri</td><td>160</td><td>155</td></tr>
 </table>
 
-<!-- ACHIEVEMENT -->
-<h2 id="achievement"></h2>
+<!-- 🔥 ACHIEVEMENT -->
+<div class="percent-box" id="achievementBox">
+    Achievement: --
+</div>
 
-<!-- CHARTS -->
-<div class="container">
-    <canvas id="barChart"></canvas>
-    <canvas id="lineChart"></canvas>
+<!-- 🔥 SMALL GRAPH -->
+<div class="graph-box">
+    <canvas id="smallChart"></canvas>
 </div>
 
 <script>
 
-// GET TABLE DATA
+// GET DATA FROM TABLE
 function getTableData() {
     let table = document.getElementById("dispatchTable");
     let labels = [];
@@ -106,89 +111,60 @@ function getTableData() {
 const data = getTableData();
 
 
-// BAR CHART
-new Chart(document.getElementById('barChart'), {
-    type: 'bar',
+// SMALL GRAPH (LINE - CLEAN LOOK)
+new Chart(document.getElementById("smallChart"), {
+    type: "line",
     data: {
         labels: data.labels,
         datasets: [
             {
-                label: 'Planned',
+                label: "P",
                 data: data.planned,
-                backgroundColor: '#3498db'
+                borderColor: "#3498db",
+                tension: 0.3
             },
             {
-                label: 'Actual',
+                label: "A",
                 data: data.actual,
-                backgroundColor: '#2ecc71'
+                borderColor: "#2ecc71",
+                tension: 0.3
             }
         ]
     },
     options: {
-        responsive: true,
         plugins: {
             legend: {
-                labels: { color: 'white', font: { size: 16 } }
+                labels: {
+                    color: "white",
+                    font: { size: 10 }
+                }
             }
         },
         scales: {
             x: {
-                ticks: { color: 'white', font: { size: 14 } }
+                ticks: {
+                    color: "white",
+                    font: { size: 10 }
+                }
             },
             y: {
-                ticks: { color: 'white', font: { size: 14 } }
+                ticks: {
+                    color: "white",
+                    font: { size: 10 }
+                }
             }
         }
     }
 });
 
 
-// LINE CHART
-new Chart(document.getElementById('lineChart'), {
-    type: 'line',
-    data: {
-        labels: data.labels,
-        datasets: [
-            {
-                label: 'Planned',
-                data: data.planned,
-                borderColor: '#3498db',
-                fill: false
-            },
-            {
-                label: 'Actual',
-                data: data.actual,
-                borderColor: '#2ecc71',
-                fill: false
-            }
-        ]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: {
-                labels: { color: 'white', font: { size: 16 } }
-            }
-        },
-        scales: {
-            x: {
-                ticks: { color: 'white' }
-            },
-            y: {
-                ticks: { color: 'white' }
-            }
-        }
-    }
-});
-
-
-// ACHIEVEMENT %
+// CALCULATE %
 let totalPlanned = data.planned.reduce((a,b)=>a+b,0);
 let totalActual = data.actual.reduce((a,b)=>a+b,0);
 
 let percent = ((totalActual / totalPlanned) * 100).toFixed(1);
 
-document.getElementById("achievement").innerText =
+document.getElementById("achievementBox").innerText =
     "Achievement: " + percent + "%";
 
 
