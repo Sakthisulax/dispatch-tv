@@ -27,7 +27,6 @@ background:rgba(255,255,255,0.08);
 h1{
 margin:0;
 font-size:48px;
-letter-spacing:2px;
 }
 
 #totalQty{
@@ -38,100 +37,96 @@ border-radius:30px;
 font-weight:bold;
 }
 
-/* ===== LAYOUT ===== */
+/* ===== TOP SECTION ===== */
 
 #topSection{
 display:flex;
 gap:20px;
-padding:20px 60px 0 60px;
+padding:20px 60px;
 }
 
 #chartContainer{
-width:35%;
+width:40%;
 background:rgba(255,255,255,0.08);
 padding:20px;
 border-radius:20px;
 }
 
-#chartTitle{
-text-align:center;
-font-size:22px;
-margin-bottom:10px;
-font-weight:bold;
+#summaryTable{
+width:60%;
+background:rgba(255,255,255,0.08);
+padding:20px;
+border-radius:20px;
 }
 
+/* ===== SUMMARY TABLE ===== */
+
+.summary-table{
+width:100%;
+border-collapse:collapse;
+font-size:22px;
+background:#ffffff;
+color:#000;
+}
+
+.summary-table th{
+background:#000;
+color:#fff;
+padding:12px;
+}
+
+.summary-table td{
+padding:10px;
+text-align:center;
+border-bottom:1px solid #ddd;
+}
+
+/* ===== MAIN TABLE ===== */
+
 #tableContainer{
-width:65%;
+margin:20px 60px;
 background:rgba(255,255,255,0.08);
 padding:30px;
 border-radius:20px;
+height:60vh;
 overflow:hidden;
-height:70vh;
 }
-
-/* TABLE */
 
 table{
 width:100%;
 border-collapse:collapse;
 font-size:28px;
-background:#ffffff;
-color:#000000;
+background:#fff;
+color:#000;
 }
 
 th{
-background:#000000;
-color:#ffffff;
+background:#000;
+color:#fff;
 position:sticky;
 top:0;
-font-size:28px;
 padding:18px;
 }
 
 td{
 padding:18px;
 text-align:center;
-border-bottom:1px solid #dddddd;
-color:#000000 !important;
+border-bottom:1px solid #ddd;
 }
 
-/* STATUS COLORS */
+/* STATUS */
 
-.today{
-background:#ffeb3b !important;
-color:#000 !important;
-font-weight:bold;
-}
-
-.overdue{
-color:#000 !important;
-font-weight:bold;
-}
-
-.upcoming{
-background:#2e7d32 !important;
-color:#fff !important;
-}
-
-.dispatched{
-background:#00c853 !important;
-color:#ffffff !important;
-font-weight:bold;
-}
+.today{background:#ffeb3b;font-weight:bold;}
+.overdue{font-weight:bold;}
+.upcoming{background:#2e7d32;color:#fff;}
+.dispatched{background:#00c853;color:#fff;font-weight:bold;}
 
 .blink{
-animation:blinkRow 1s infinite;
+animation:blink 1s infinite;
 }
 
-@keyframes blinkRow{
-0%{opacity:1;}
+@keyframes blink{
 50%{opacity:0.3;}
-100%{opacity:1;}
-}
-
-.error{
-color:red;
-font-size:24px;
 }
 
 </style>
@@ -144,19 +139,23 @@ font-size:24px;
 <div id="totalQty">Loading...</div>
 </header>
 
-<!-- NEW TOP SECTION -->
+<!-- TOP -->
 <div id="topSection">
-    
-    <!-- CHART -->
-    <div id="chartContainer">
-        <div id="chartTitle">CUSTOMER WISE DISPATCH OTD</div>
-        <canvas id="dispatchChart"></canvas>
-    </div>
 
-    <!-- TABLE -->
-    <div id="tableContainer">Loading data...</div>
+<div id="chartContainer">
+<h3 style="text-align:center;">CUSTOMER WISE DISPATCH OTD</h3>
+<canvas id="chart"></canvas>
+</div>
+
+<div id="summaryTable">
+<h3 style="text-align:center;">CUSTOMER SUMMARY</h3>
+<div id="summaryContent">Loading...</div>
+</div>
 
 </div>
+
+<!-- EXISTING TABLE -->
+<div id="tableContainer">Loading...</div>
 
 <script>
 
@@ -166,147 +165,65 @@ function clean(v){
 return v ? v.replace(/"/g,'').trim() : "";
 }
 
-function parseDate(value){
-value=clean(value);
-if(!value) return null;
+function parseDate(v){
+v=clean(v);
+if(!v) return null;
 
-const parts=value.split("-");
-if(parts.length!==2) return null;
-
-const day=parseInt(parts[0]);
-
-const months={
-jan:0,feb:1,mar:2,apr:3,may:4,jun:5,
-jul:6,aug:7,sep:8,oct:9,nov:10,dec:11
-};
-
-const month=months[parts[1].toLowerCase()];
-if(month===undefined) return null;
-
-const currentYear=new Date().getFullYear();
-return new Date(currentYear,month,day);
+let [d,m]=v.split("-");
+const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+return new Date(new Date().getFullYear(), months[m.toLowerCase()], parseInt(d));
 }
 
 fetch(SHEET_URL)
-.then(res=>res.text())
+.then(r=>r.text())
 .then(data=>{
 
-const rows=data.split("\n").map(row=>{
-const result=[];
-let current='';
-let insideQuotes=false;
-
-for(let char of row){
-if(char==='"') insideQuotes=!insideQuotes;
-else if(char===',' && !insideQuotes){
-result.push(current);
-current='';
-}else{
-current+=char;
-}
-}
-result.push(current);
-return result;
-});
-
+const rows=data.split("\n").map(r=>r.split(","));
 rows.splice(0,2);
 
 let totalQty=0;
-let customerData={}; // <-- for chart
+let cust={};
 
-let html="<table>";
+let html="<table><tr>\
+<th>SI NO</th><th>CUSTOMER</th><th>SCHEDULE DATE</th>\
+<th>ITEM CODE</th><th>ITEM NAME</th><th>PRODUCT</th>\
+<th>MANAGER</th><th>SCH QTY</th><th>REMARKS</th><th>STATUS</th></tr>";
 
-html+="<tr>\
-<th>SI NO</th>\
-<th>CUSTOMER</th>\
-<th>SCHEDULE DATE</th>\
-<th>ITEM CODE</th>\
-<th>ITEM NAME</th>\
-<th>PRODUCT</th>\
-<th>PROJECT PROGRAM MANAGER</th>\
-<th>SCH QTY</th>\
-<th>REMARKS</th>\
-<th>STATUS</th>\
-</tr>";
-
-const today=new Date();
-today.setHours(0,0,0,0);
+const today=new Date(); today.setHours(0,0,0,0);
 
 rows.forEach(r=>{
 
 if(r.length<9) return;
-if(!clean(r[0])) return;
 
-const customer=clean(r[1]);
-const qty=parseInt(clean(r[7]));
-const date=parseDate(r[2]);
-const remark=clean(r[8]).toLowerCase();
+let c=clean(r[1]);
+let qty=parseInt(clean(r[7]));
+let remark=clean(r[8]).toLowerCase();
+let date=parseDate(r[2]);
 
-if(isNaN(qty)||!date) return;
+if(!qty||!date) return;
 
 totalQty+=qty;
 
-/* ===== CHART DATA ===== */
+/* SUMMARY */
+if(!cust[c]) cust[c]={sch:0,disp:0};
+cust[c].sch+=qty;
+if(remark==="dispatched") cust[c].disp+=qty;
 
-if(!customerData[customer]){
-customerData[customer]={scheduled:0, dispatched:0};
-}
+/* TABLE */
+let status="",cls="";
+if(remark==="dispatched"){cls="dispatched";status="DISPATCHED";}
+else if(date<today){cls="overdue";status="OVERDUE";}
+else if(date.getTime()===today.getTime()){cls="today";status="TODAY";}
+else{cls="upcoming";status="UPCOMING";}
 
-customerData[customer].scheduled += qty;
-
-if(remark==="dispatched"){
-customerData[customer].dispatched += qty;
-}
-
-/* ===== TABLE ===== */
-
-let status="";
-let rowClass="";
-
-if(remark==="dispatched"){
-rowClass="dispatched";
-status="DISPATCHED";
-}
-else if(date<today){
-status="OVERDUE";
-rowClass="overdue";
-}
-else if(date.getTime()===today.getTime()){
-status="TODAY";
-rowClass="today";
-}
-else{
-status="UPCOMING";
-rowClass="upcoming";
-}
-
-html+="<tr class='"+rowClass+"'>";
-
+html+="<tr class='"+cls+"'>";
 for(let i=0;i<9;i++){
-
-let value=clean(r[i]);
-
-if(i===8){
-
-let cellClass="";
-if(rowClass==="overdue") cellClass="blink";
-
-if(value.toLowerCase()==="ready"){
-html+="<td style='background:#2ecc71;color:white;font-weight:bold;'>"+value+"</td>";
-}
-else if(value.toLowerCase()==="dispatched"){
-html+="<td style='background:#00c853;color:white;font-weight:bold;'>"+value+"</td>";
-}
-else{
-html+="<td class='"+cellClass+"' style='background:#e74c3c;color:white;font-weight:bold;'>"+value+"</td>";
-}
-
+if(i===8 && cls==="overdue"){
+html+="<td class='blink'>"+clean(r[i])+"</td>";
 }else{
-html+="<td>"+value+"</td>";
+html+="<td>"+clean(r[i])+"</td>";
 }
-
 }
-
 html+="<td>"+status+"</td></tr>";
 
 });
@@ -316,53 +233,52 @@ html+="</table>";
 document.getElementById("tableContainer").innerHTML=html;
 document.getElementById("totalQty").innerText="Total Qty: "+totalQty;
 
-/* ===== CREATE CHART ===== */
+/* CHART */
+let labels=Object.keys(cust);
+let sch=labels.map(x=>cust[x].sch);
+let disp=labels.map(x=>cust[x].disp);
 
-const labels=Object.keys(customerData);
-const scheduled=labels.map(c=>customerData[c].scheduled);
-const dispatched=labels.map(c=>customerData[c].dispatched);
-
-new Chart(document.getElementById("dispatchChart"),{
+new Chart(document.getElementById("chart"),{
 type:'bar',
 data:{
 labels:labels,
 datasets:[
-{
-label:'Scheduled Qty',
-data:scheduled
-},
-{
-label:'Dispatched Qty',
-data:dispatched
-}
+{label:'Scheduled',data:sch},
+{label:'Dispatched',data:disp}
 ]
-},
-options:{
-responsive:true,
-plugins:{
-legend:{
-labels:{color:'white'}
-}
-},
-scales:{
-x:{ticks:{color:'white'}},
-y:{ticks:{color:'white'}}
-}
 }
 });
 
-startAutoScroll();
+/* SUMMARY TABLE */
+let sumHTML="<table class='summary-table'><tr>\
+<th>Customer</th><th>Scheduled</th><th>Dispatched</th><th>OTD %</th></tr>";
+
+labels.forEach(c=>{
+let s=cust[c].sch;
+let d=cust[c].disp;
+let otd=((d/s)*100).toFixed(1);
+
+sumHTML+=`<tr>
+<td>${c}</td>
+<td>${s}</td>
+<td>${d}</td>
+<td>${otd}%</td>
+</tr>`;
+});
+
+sumHTML+="</table>";
+
+document.getElementById("summaryContent").innerHTML=sumHTML;
+
+startScroll();
 
 });
 
-function startAutoScroll(){
-const container=document.getElementById("tableContainer");
-
+function startScroll(){
+let c=document.getElementById("tableContainer");
 setInterval(()=>{
-container.scrollTop+=1;
-if(container.scrollTop+container.clientHeight>=container.scrollHeight){
-container.scrollTop=0;
-}
+c.scrollTop+=1;
+if(c.scrollTop+c.clientHeight>=c.scrollHeight) c.scrollTop=0;
 },50);
 }
 
