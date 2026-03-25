@@ -24,10 +24,7 @@ padding:30px 60px;
 background:rgba(255,255,255,0.08);
 }
 
-h1{
-margin:0;
-font-size:48px;
-}
+h1{margin:0;font-size:48px;}
 
 #totalQty{
 font-size:30px;
@@ -37,7 +34,7 @@ border-radius:30px;
 font-weight:bold;
 }
 
-/* TOP SECTION */
+/* TOP */
 
 #topSection{
 display:flex;
@@ -117,13 +114,8 @@ border-bottom:1px solid #ddd;
 .upcoming{background:#2e7d32;color:#fff;}
 .dispatched{background:#00c853;color:#fff;font-weight:bold;}
 
-.blink{
-animation:blink 1s infinite;
-}
-
-@keyframes blink{
-50%{opacity:0.3;}
-}
+.blink{animation:blink 1s infinite;}
+@keyframes blink{50%{opacity:0.3;}}
 
 </style>
 </head>
@@ -159,6 +151,7 @@ function clean(v){
 return v ? v.replace(/"/g,'').trim() : "";
 }
 
+/* ✅ FIXED DATE PARSE */
 function parseDate(v){
 v=clean(v);
 if(!v) return null;
@@ -168,7 +161,14 @@ if(parts.length!==2) return null;
 
 const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
 
-return new Date(new Date().getFullYear(), months[parts[1].toLowerCase()], parseInt(parts[0]));
+let d = new Date(new Date().getFullYear(), months[parts[1].toLowerCase()], parseInt(parts[0]));
+d.setHours(0,0,0,0); // important
+return d;
+}
+
+/* ✅ SAFE DAY COMPARE */
+function isSameDay(d1,d2){
+return d1.getDate()===d2.getDate() && d1.getMonth()===d2.getMonth();
 }
 
 fetch(SHEET_URL)
@@ -203,8 +203,8 @@ let date=parseDate(r[2]);
 
 if(!qty || !date) return;
 
-/* ✅ FILTER ONLY TODAY + YESTERDAY */
-if(date.getTime() !== today.getTime() && date.getTime() !== yesterday.getTime()){
+/* ✅ FILTER FIXED */
+if(!isSameDay(date,today) && !isSameDay(date,yesterday)){
 return;
 }
 
@@ -217,10 +217,9 @@ if(remark==="dispatched") cust[customer].disp+=qty;
 
 /* TABLE */
 let status="",cls="";
-
 if(remark==="dispatched"){cls="dispatched";status="DISPATCHED";}
 else if(date<today){cls="overdue";status="OVERDUE";}
-else if(date.getTime()===today.getTime()){cls="today";status="TODAY";}
+else if(isSameDay(date,today)){cls="today";status="TODAY";}
 else{cls="upcoming";status="UPCOMING";}
 
 html+="<tr class='"+cls+"'>";
@@ -258,14 +257,14 @@ datasets:[
 }
 });
 
-/* SUMMARY TABLE */
+/* SUMMARY */
 let sumHTML="<table class='summary-table'><tr>\
 <th>Customer</th><th>Scheduled</th><th>Dispatched</th><th>OTD %</th></tr>";
 
 labels.forEach(c=>{
 let s=cust[c].sch;
 let d=cust[c].disp;
-let otd=((d/s)*100).toFixed(1);
+let otd = s ? ((d/s)*100).toFixed(1) : 0;
 
 sumHTML+=`<tr>
 <td>${c}</td>
@@ -286,6 +285,9 @@ c.scrollTop+=1;
 if(c.scrollTop+c.clientHeight>=c.scrollHeight) c.scrollTop=0;
 },50);
 
+})
+.catch(()=>{
+document.getElementById("tableContainer").innerHTML="Error loading data";
 });
 
 </script>
