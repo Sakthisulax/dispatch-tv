@@ -37,7 +37,7 @@ border-radius:30px;
 font-weight:bold;
 }
 
-/* ===== TOP SECTION ===== */
+/* TOP SECTION */
 
 #topSection{
 display:flex;
@@ -59,13 +59,11 @@ padding:20px;
 border-radius:20px;
 }
 
-/* ===== SUMMARY TABLE ===== */
-
 .summary-table{
 width:100%;
 border-collapse:collapse;
 font-size:22px;
-background:#ffffff;
+background:#fff;
 color:#000;
 }
 
@@ -81,7 +79,7 @@ text-align:center;
 border-bottom:1px solid #ddd;
 }
 
-/* ===== MAIN TABLE ===== */
+/* MAIN TABLE */
 
 #tableContainer{
 margin:20px 60px;
@@ -114,8 +112,6 @@ text-align:center;
 border-bottom:1px solid #ddd;
 }
 
-/* STATUS */
-
 .today{background:#ffeb3b;font-weight:bold;}
 .overdue{font-weight:bold;}
 .upcoming{background:#2e7d32;color:#fff;}
@@ -139,7 +135,6 @@ animation:blink 1s infinite;
 <div id="totalQty">Loading...</div>
 </header>
 
-<!-- TOP -->
 <div id="topSection">
 
 <div id="chartContainer">
@@ -154,7 +149,6 @@ animation:blink 1s infinite;
 
 </div>
 
-<!-- EXISTING TABLE -->
 <div id="tableContainer">Loading...</div>
 
 <script>
@@ -169,9 +163,12 @@ function parseDate(v){
 v=clean(v);
 if(!v) return null;
 
-let [d,m]=v.split("-");
+let parts=v.split("-");
+if(parts.length!==2) return null;
+
 const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-return new Date(new Date().getFullYear(), months[m.toLowerCase()], parseInt(d));
+
+return new Date(new Date().getFullYear(), months[parts[1].toLowerCase()], parseInt(parts[0]));
 }
 
 fetch(SHEET_URL)
@@ -189,34 +186,45 @@ let html="<table><tr>\
 <th>ITEM CODE</th><th>ITEM NAME</th><th>PRODUCT</th>\
 <th>MANAGER</th><th>SCH QTY</th><th>REMARKS</th><th>STATUS</th></tr>";
 
-const today=new Date(); today.setHours(0,0,0,0);
+const today=new Date();
+today.setHours(0,0,0,0);
+
+const yesterday=new Date(today);
+yesterday.setDate(today.getDate()-1);
 
 rows.forEach(r=>{
 
 if(r.length<9) return;
 
-let c=clean(r[1]);
+let customer=clean(r[1]);
 let qty=parseInt(clean(r[7]));
 let remark=clean(r[8]).toLowerCase();
 let date=parseDate(r[2]);
 
-if(!qty||!date) return;
+if(!qty || !date) return;
+
+/* ✅ FILTER ONLY TODAY + YESTERDAY */
+if(date.getTime() !== today.getTime() && date.getTime() !== yesterday.getTime()){
+return;
+}
 
 totalQty+=qty;
 
 /* SUMMARY */
-if(!cust[c]) cust[c]={sch:0,disp:0};
-cust[c].sch+=qty;
-if(remark==="dispatched") cust[c].disp+=qty;
+if(!cust[customer]) cust[customer]={sch:0,disp:0};
+cust[customer].sch+=qty;
+if(remark==="dispatched") cust[customer].disp+=qty;
 
 /* TABLE */
 let status="",cls="";
+
 if(remark==="dispatched"){cls="dispatched";status="DISPATCHED";}
 else if(date<today){cls="overdue";status="OVERDUE";}
 else if(date.getTime()===today.getTime()){cls="today";status="TODAY";}
 else{cls="upcoming";status="UPCOMING";}
 
 html+="<tr class='"+cls+"'>";
+
 for(let i=0;i<9;i++){
 if(i===8 && cls==="overdue"){
 html+="<td class='blink'>"+clean(r[i])+"</td>";
@@ -224,6 +232,7 @@ html+="<td class='blink'>"+clean(r[i])+"</td>";
 html+="<td>"+clean(r[i])+"</td>";
 }
 }
+
 html+="<td>"+status+"</td></tr>";
 
 });
@@ -270,17 +279,14 @@ sumHTML+="</table>";
 
 document.getElementById("summaryContent").innerHTML=sumHTML;
 
-startScroll();
-
-});
-
-function startScroll(){
-let c=document.getElementById("tableContainer");
+/* AUTO SCROLL */
 setInterval(()=>{
+let c=document.getElementById("tableContainer");
 c.scrollTop+=1;
 if(c.scrollTop+c.clientHeight>=c.scrollHeight) c.scrollTop=0;
 },50);
-}
+
+});
 
 </script>
 
