@@ -5,6 +5,8 @@
 <meta http-equiv="refresh" content="300">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 
 body{
@@ -36,14 +38,38 @@ border-radius:30px;
 font-weight:bold;
 }
 
+/* ===== LAYOUT ===== */
+
+#topSection{
+display:flex;
+gap:20px;
+padding:20px 60px 0 60px;
+}
+
+#chartContainer{
+width:35%;
+background:rgba(255,255,255,0.08);
+padding:20px;
+border-radius:20px;
+}
+
+#chartTitle{
+text-align:center;
+font-size:22px;
+margin-bottom:10px;
+font-weight:bold;
+}
+
 #tableContainer{
-margin:30px 60px;
+width:65%;
 background:rgba(255,255,255,0.08);
 padding:30px;
 border-radius:20px;
 overflow:hidden;
 height:70vh;
 }
+
+/* TABLE */
 
 table{
 width:100%;
@@ -78,7 +104,6 @@ font-weight:bold;
 }
 
 .overdue{
-/* removed red background */
 color:#000 !important;
 font-weight:bold;
 }
@@ -88,15 +113,11 @@ background:#2e7d32 !important;
 color:#fff !important;
 }
 
-/* DISPATCHED FULL ROW */
-
 .dispatched{
 background:#00c853 !important;
 color:#ffffff !important;
 font-weight:bold;
 }
-
-/* BLINK ONLY REMARK CELL */
 
 .blink{
 animation:blinkRow 1s infinite;
@@ -123,7 +144,19 @@ font-size:24px;
 <div id="totalQty">Loading...</div>
 </header>
 
-<div id="tableContainer">Loading data...</div>
+<!-- NEW TOP SECTION -->
+<div id="topSection">
+    
+    <!-- CHART -->
+    <div id="chartContainer">
+        <div id="chartTitle">CUSTOMER WISE DISPATCH OTD</div>
+        <canvas id="dispatchChart"></canvas>
+    </div>
+
+    <!-- TABLE -->
+    <div id="tableContainer">Loading data...</div>
+
+</div>
 
 <script>
 
@@ -134,7 +167,6 @@ return v ? v.replace(/"/g,'').trim() : "";
 }
 
 function parseDate(value){
-
 value=clean(value);
 if(!value) return null;
 
@@ -156,11 +188,7 @@ return new Date(currentYear,month,day);
 }
 
 fetch(SHEET_URL)
-.then(response=>{
-if(!response.ok) throw new Error("Sheet not accessible");
-return response.text();
-})
-
+.then(res=>res.text())
 .then(data=>{
 
 const rows=data.split("\n").map(row=>{
@@ -169,14 +197,11 @@ let current='';
 let insideQuotes=false;
 
 for(let char of row){
-if(char==='"'){
-insideQuotes=!insideQuotes;
-}
+if(char==='"') insideQuotes=!insideQuotes;
 else if(char===',' && !insideQuotes){
 result.push(current);
 current='';
-}
-else{
+}else{
 current+=char;
 }
 }
@@ -187,6 +212,7 @@ return result;
 rows.splice(0,2);
 
 let totalQty=0;
+let customerData={}; // <-- for chart
 
 let html="<table>";
 
@@ -211,14 +237,28 @@ rows.forEach(r=>{
 if(r.length<9) return;
 if(!clean(r[0])) return;
 
+const customer=clean(r[1]);
 const qty=parseInt(clean(r[7]));
 const date=parseDate(r[2]);
+const remark=clean(r[8]).toLowerCase();
 
 if(isNaN(qty)||!date) return;
 
 totalQty+=qty;
 
-let remark=clean(r[8]).toLowerCase();
+/* ===== CHART DATA ===== */
+
+if(!customerData[customer]){
+customerData[customer]={scheduled:0, dispatched:0};
+}
+
+customerData[customer].scheduled += qty;
+
+if(remark==="dispatched"){
+customerData[customer].dispatched += qty;
+}
+
+/* ===== TABLE ===== */
 
 let status="";
 let rowClass="";
@@ -249,24 +289,19 @@ let value=clean(r[i]);
 if(i===8){
 
 let cellClass="";
-
-// blink only if overdue
-if(rowClass==="overdue"){
-cellClass="blink";
-}
+if(rowClass==="overdue") cellClass="blink";
 
 if(value.toLowerCase()==="ready"){
-html+="<td style='background:#2ecc71 !important;color:white;font-weight:bold;'>"+value+"</td>";
+html+="<td style='background:#2ecc71;color:white;font-weight:bold;'>"+value+"</td>";
 }
 else if(value.toLowerCase()==="dispatched"){
-html+="<td style='background:#00c853 !important;color:white;font-weight:bold;'>"+value+"</td>";
+html+="<td style='background:#00c853;color:white;font-weight:bold;'>"+value+"</td>";
 }
 else{
-html+="<td class='"+cellClass+"' style='background:#e74c3c !important;color:white;font-weight:bold;'>"+value+"</td>";
+html+="<td class='"+cellClass+"' style='background:#e74c3c;color:white;font-weight:bold;'>"+value+"</td>";
 }
 
-}
-else{
+}else{
 html+="<td>"+value+"</td>";
 }
 
@@ -281,21 +316,50 @@ html+="</table>";
 document.getElementById("tableContainer").innerHTML=html;
 document.getElementById("totalQty").innerText="Total Qty: "+totalQty;
 
+/* ===== CREATE CHART ===== */
+
+const labels=Object.keys(customerData);
+const scheduled=labels.map(c=>customerData[c].scheduled);
+const dispatched=labels.map(c=>customerData[c].dispatched);
+
+new Chart(document.getElementById("dispatchChart"),{
+type:'bar',
+data:{
+labels:labels,
+datasets:[
+{
+label:'Scheduled Qty',
+data:scheduled
+},
+{
+label:'Dispatched Qty',
+data:dispatched
+}
+]
+},
+options:{
+responsive:true,
+plugins:{
+legend:{
+labels:{color:'white'}
+}
+},
+scales:{
+x:{ticks:{color:'white'}},
+y:{ticks:{color:'white'}}
+}
+}
+});
+
 startAutoScroll();
 
-})
-
-.catch(error=>{
-document.getElementById("tableContainer").innerHTML="<div class='error'>Unable to load Google Sheet</div>";
-console.log(error);
 });
 
 function startAutoScroll(){
 const container=document.getElementById("tableContainer");
-let scrollSpeed=1;
 
-setInterval(function(){
-container.scrollTop+=scrollSpeed;
+setInterval(()=>{
+container.scrollTop+=1;
 if(container.scrollTop+container.clientHeight>=container.scrollHeight){
 container.scrollTop=0;
 }
