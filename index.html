@@ -11,27 +11,62 @@
 
 body{
 margin:0;
-font-family:Arial, sans-serif;
+font-family:Arial;
 background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
 color:white;
 }
+
+/* HEADER */
 
 header{
 display:flex;
 justify-content:space-between;
 align-items:center;
-padding:30px 60px;
+padding:20px 60px;
 background:rgba(255,255,255,0.08);
 }
 
-h1{margin:0;font-size:48px;}
+h1{font-size:42px;margin:0;}
 
 #totalQty{
-font-size:30px;
+font-size:26px;
 background:rgba(255,255,255,0.2);
-padding:12px 25px;
-border-radius:30px;
+padding:10px 20px;
+border-radius:25px;
+}
+
+/* KPI */
+
+#kpiSection{
+display:flex;
+justify-content:space-between;
+padding:10px 60px;
+gap:20px;
+}
+
+.kpi{
+flex:1;
+text-align:center;
+padding:20px;
+border-radius:15px;
+background:rgba(255,255,255,0.1);
+}
+
+.kpi h2{margin:0;font-size:20px;}
+.kpi-value{font-size:36px;font-weight:bold;margin-top:10px;}
+
+/* ALERT */
+
+#alert{
+text-align:center;
+font-size:28px;
 font-weight:bold;
+color:#ff5252;
+animation:blink 1s infinite;
+}
+
+@keyframes blink{
+50%{opacity:0.3;}
 }
 
 /* TOP */
@@ -42,80 +77,49 @@ gap:20px;
 padding:20px 60px;
 }
 
-#chartContainer{
-width:40%;
-background:rgba(255,255,255,0.08);
-padding:20px;
-border-radius:20px;
-}
+#chartContainer{width:40%;background:rgba(255,255,255,0.08);padding:20px;border-radius:20px;}
+#summaryTable{width:60%;background:rgba(255,255,255,0.08);padding:20px;border-radius:20px;}
 
-#summaryTable{
-width:60%;
-background:rgba(255,255,255,0.08);
-padding:20px;
-border-radius:20px;
-}
+/* SUMMARY */
 
 .summary-table{
 width:100%;
 border-collapse:collapse;
-font-size:22px;
 background:#fff;
 color:#000;
 }
 
-.summary-table th{
-background:#000;
-color:#fff;
-padding:12px;
-}
-
-.summary-table td{
-padding:10px;
-text-align:center;
-border-bottom:1px solid #ddd;
-}
+.summary-table th{background:#000;color:#fff;padding:10px;}
+.summary-table td{padding:8px;text-align:center;border-bottom:1px solid #ddd;}
 
 /* MAIN TABLE */
 
 #tableContainer{
 margin:20px 60px;
 background:rgba(255,255,255,0.08);
-padding:30px;
+padding:20px;
 border-radius:20px;
-height:60vh;
+height:55vh;
 overflow:hidden;
 }
 
 table{
 width:100%;
 border-collapse:collapse;
-font-size:28px;
 background:#fff;
 color:#000;
+font-size:24px;
 }
 
-th{
-background:#000;
-color:#fff;
-position:sticky;
-top:0;
-padding:18px;
-}
+th{background:#000;color:#fff;padding:12px;position:sticky;top:0;}
+td{padding:12px;text-align:center;border-bottom:1px solid #ddd;}
 
-td{
-padding:18px;
-text-align:center;
-border-bottom:1px solid #ddd;
-}
-
-.today{background:#ffeb3b;font-weight:bold;}
-.overdue{font-weight:bold;}
+.today{background:#ffeb3b;}
+.overdue{}
 .upcoming{background:#2e7d32;color:#fff;}
-.dispatched{background:#00c853;color:#fff;font-weight:bold;}
+.dispatched{background:#00c853;color:#fff;}
 
 .blink{animation:blink 1s infinite;}
-@keyframes blink{50%{opacity:0.3;}}
 
 </style>
 </head>
@@ -127,119 +131,140 @@ border-bottom:1px solid #ddd;
 <div id="totalQty">Loading...</div>
 </header>
 
+<!-- KPI -->
+<div id="kpiSection">
+<div class="kpi">
+<h2>TODAY OTD</h2>
+<div id="todayOTD" class="kpi-value">--%</div>
+</div>
+
+<div class="kpi">
+<h2>YESTERDAY PENDING</h2>
+<div id="yPending" class="kpi-value">--</div>
+</div>
+</div>
+
+<div id="alert"></div>
+
+<!-- TOP -->
 <div id="topSection">
 
 <div id="chartContainer">
-<h3 style="text-align:center;">CUSTOMER WISE DISPATCH OTD</h3>
+<h3 style="text-align:center;">CUSTOMER WISE DISPATCH</h3>
 <canvas id="chart"></canvas>
 </div>
 
 <div id="summaryTable">
 <h3 style="text-align:center;">CUSTOMER SUMMARY</h3>
-<div id="summaryContent">Loading...</div>
+<div id="summaryContent"></div>
 </div>
 
 </div>
 
-<div id="tableContainer">Loading...</div>
+<!-- TABLE -->
+<div id="tableContainer"></div>
 
 <script>
 
-const SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
+const URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
-function clean(v){
-return v ? v.replace(/"/g,'').trim() : "";
+function clean(v){return v?v.replace(/"/g,'').trim():"";}
+
+/* CSV FIX */
+function parseCSV(data){
+return data.split("\n").map(row=>{
+let res=[],cur='',q=false;
+for(let c of row){
+if(c=='"') q=!q;
+else if(c==','&&!q){res.push(cur);cur='';}
+else cur+=c;
+}
+res.push(cur);
+return res;
+});
 }
 
-/* ✅ FIXED DATE PARSE */
 function parseDate(v){
 v=clean(v);
 if(!v) return null;
-
-let parts=v.split("-");
-if(parts.length!==2) return null;
-
-const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-
-let d = new Date(new Date().getFullYear(), months[parts[1].toLowerCase()], parseInt(parts[0]));
-d.setHours(0,0,0,0); // important
-return d;
+let [d,m]=v.split("-");
+const M={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+let dt=new Date(new Date().getFullYear(),M[m.toLowerCase()],parseInt(d));
+dt.setHours(0,0,0,0);
+return dt;
 }
 
-/* ✅ SAFE DAY COMPARE */
-function isSameDay(d1,d2){
-return d1.getDate()===d2.getDate() && d1.getMonth()===d2.getMonth();
-}
+function same(d1,d2){return d1.getDate()==d2.getDate()&&d1.getMonth()==d2.getMonth();}
 
-fetch(SHEET_URL)
-.then(r=>r.text())
-.then(data=>{
+fetch(URL).then(r=>r.text()).then(data=>{
 
-const rows=data.split("\n").map(r=>r.split(","));
+let rows=parseCSV(data);
 rows.splice(0,2);
 
-let totalQty=0;
-let cust={};
+let today=new Date(); today.setHours(0,0,0,0);
+let yest=new Date(today); yest.setDate(today.getDate()-1);
 
-let html="<table><tr>\
-<th>SI NO</th><th>CUSTOMER</th><th>SCHEDULE DATE</th>\
-<th>ITEM CODE</th><th>ITEM NAME</th><th>PRODUCT</th>\
-<th>MANAGER</th><th>SCH QTY</th><th>REMARKS</th><th>STATUS</th></tr>";
+let cust={}, total=0;
+let todaySch=0, todayDisp=0, yPending=0;
 
-const today=new Date();
-today.setHours(0,0,0,0);
-
-const yesterday=new Date(today);
-yesterday.setDate(today.getDate()-1);
+let html="<table><tr><th>SI</th><th>CUSTOMER</th><th>DATE</th><th>ITEM</th><th>NAME</th><th>PRODUCT</th><th>MANAGER</th><th>QTY</th><th>REMARK</th><th>STATUS</th></tr>";
 
 rows.forEach(r=>{
-
 if(r.length<9) return;
 
-let customer=clean(r[1]);
+let c=clean(r[1]);
 let qty=parseInt(clean(r[7]));
 let remark=clean(r[8]).toLowerCase();
 let date=parseDate(r[2]);
 
-if(!qty || !date) return;
+if(!qty||!date) return;
 
-/* ✅ FILTER FIXED */
-if(!isSameDay(date,today) && !isSameDay(date,yesterday)){
-return;
+/* FILTER */
+if(!same(date,today)&&!same(date,yest)) return;
+
+total+=qty;
+
+/* KPI */
+if(same(date,today)){
+todaySch+=qty;
+if(remark.includes("dispatched")) todayDisp+=qty;
+}
+if(same(date,yest)&&!remark.includes("dispatched")){
+yPending+=qty;
 }
 
-totalQty+=qty;
-
 /* SUMMARY */
-if(!cust[customer]) cust[customer]={sch:0,disp:0};
-cust[customer].sch+=qty;
-if(remark==="dispatched") cust[customer].disp+=qty;
+if(!cust[c]) cust[c]={sch:0,disp:0};
+cust[c].sch+=qty;
+if(remark.includes("dispatched")) cust[c].disp+=qty;
 
 /* TABLE */
-let status="",cls="";
-if(remark==="dispatched"){cls="dispatched";status="DISPATCHED";}
+let cls="",status="";
+if(remark.includes("dispatched")){cls="dispatched";status="DISPATCHED";}
 else if(date<today){cls="overdue";status="OVERDUE";}
-else if(isSameDay(date,today)){cls="today";status="TODAY";}
+else if(same(date,today)){cls="today";status="TODAY";}
 else{cls="upcoming";status="UPCOMING";}
 
 html+="<tr class='"+cls+"'>";
-
 for(let i=0;i<9;i++){
-if(i===8 && cls==="overdue"){
-html+="<td class='blink'>"+clean(r[i])+"</td>";
-}else{
-html+="<td>"+clean(r[i])+"</td>";
+if(i==8&&cls=="overdue") html+="<td class='blink'>"+clean(r[i])+"</td>";
+else html+="<td>"+clean(r[i])+"</td>";
 }
-}
-
 html+="<td>"+status+"</td></tr>";
-
 });
 
 html+="</table>";
-
 document.getElementById("tableContainer").innerHTML=html;
-document.getElementById("totalQty").innerText="Total Qty: "+totalQty;
+document.getElementById("totalQty").innerText="Total Qty: "+total;
+
+/* KPI DISPLAY */
+let otd = todaySch ? ((todayDisp/todaySch)*100).toFixed(1) : 0;
+document.getElementById("todayOTD").innerText=otd+"%";
+document.getElementById("yPending").innerText=yPending;
+
+if(yPending>0){
+document.getElementById("alert").innerText="⚠ Yesterday Pending: "+yPending;
+}
 
 /* CHART */
 let labels=Object.keys(cust);
@@ -248,46 +273,35 @@ let disp=labels.map(x=>cust[x].disp);
 
 new Chart(document.getElementById("chart"),{
 type:'bar',
-data:{
-labels:labels,
-datasets:[
-{label:'Scheduled',data:sch},
-{label:'Dispatched',data:disp}
-]
-}
+data:{labels:labels,datasets:[{label:'Scheduled',data:sch},{label:'Dispatched',data:disp}]}
 });
 
 /* SUMMARY */
-let sumHTML="<table class='summary-table'><tr>\
-<th>Customer</th><th>Scheduled</th><th>Dispatched</th><th>OTD %</th></tr>";
-
+let sHTML="<table class='summary-table'><tr><th>Customer</th><th>Sch</th><th>Disp</th><th>OTD%</th></tr>";
 labels.forEach(c=>{
-let s=cust[c].sch;
-let d=cust[c].disp;
-let otd = s ? ((d/s)*100).toFixed(1) : 0;
+let s=cust[c].sch, d=cust[c].disp;
+let o=s?((d/s)*100).toFixed(1):0;
 
-sumHTML+=`<tr>
+let color = o<50?'red':o<80?'orange':'green';
+
+sHTML+=`<tr>
 <td>${c}</td>
 <td>${s}</td>
 <td>${d}</td>
-<td>${otd}%</td>
+<td style="color:${color};font-weight:bold;">${o}%</td>
 </tr>`;
 });
+sHTML+="</table>";
 
-sumHTML+="</table>";
+document.getElementById("summaryContent").innerHTML=sHTML;
 
-document.getElementById("summaryContent").innerHTML=sumHTML;
-
-/* AUTO SCROLL */
+/* SCROLL */
 setInterval(()=>{
-let c=document.getElementById("tableContainer");
-c.scrollTop+=1;
-if(c.scrollTop+c.clientHeight>=c.scrollHeight) c.scrollTop=0;
+let t=document.getElementById("tableContainer");
+t.scrollTop+=1;
+if(t.scrollTop+t.clientHeight>=t.scrollHeight) t.scrollTop=0;
 },50);
 
-})
-.catch(()=>{
-document.getElementById("tableContainer").innerHTML="Error loading data";
 });
 
 </script>
