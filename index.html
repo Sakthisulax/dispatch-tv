@@ -22,13 +22,12 @@ padding:20px 60px;
 background:rgba(255,255,255,0.08);
 }
 
-h1{font-size:40px;margin:0;}
+h1{margin:0;font-size:40px;}
 
 #totalQty{
-font-size:24px;
 background:rgba(255,255,255,0.2);
 padding:10px 20px;
-border-radius:25px;
+border-radius:20px;
 }
 
 /* KPI */
@@ -46,15 +45,19 @@ background:rgba(255,255,255,0.1);
 border-radius:15px;
 }
 
-.kpi-value{font-size:32px;font-weight:bold;}
+.kpi-value{font-size:30px;font-weight:bold;}
 
+/* ALERT */
 #alert{
 text-align:center;
 font-size:26px;
 color:red;
 animation:blink 1s infinite;
 }
-@keyframes blink{50%{opacity:0.3;}}
+
+@keyframes blink{
+50%{opacity:0.3;}
+}
 
 /* TOP */
 #topSection{
@@ -63,8 +66,19 @@ gap:20px;
 padding:20px 60px;
 }
 
-#chartContainer{width:40%;background:rgba(255,255,255,0.08);padding:20px;border-radius:20px;}
-#summaryTable{width:60%;background:rgba(255,255,255,0.08);padding:20px;border-radius:20px;}
+#chartContainer{
+width:40%;
+background:rgba(255,255,255,0.08);
+padding:20px;
+border-radius:20px;
+}
+
+#summaryTable{
+width:60%;
+background:rgba(255,255,255,0.08);
+padding:20px;
+border-radius:20px;
+}
 
 .summary-table{
 width:100%;
@@ -75,7 +89,7 @@ border-collapse:collapse;
 .summary-table th{background:#000;color:#fff;}
 .summary-table td{padding:8px;text-align:center;border-bottom:1px solid #ddd;}
 
-/* TABLE */
+/* MAIN TABLE */
 #tableContainer{
 margin:20px 60px;
 background:rgba(255,255,255,0.08);
@@ -92,12 +106,22 @@ color:#000;
 border-collapse:collapse;
 font-size:22px;
 }
-th{background:#000;color:#fff;position:sticky;top:0;}
-td{padding:10px;text-align:center;border-bottom:1px solid #ddd;}
 
-.today{background:#ffeb3b;}
+th{
+background:#000;
+color:#fff;
+position:sticky;
+top:0;
+}
+
+td{
+padding:10px;
+text-align:center;
+border-bottom:1px solid #ddd;
+}
+
 .dispatched{background:#00c853;color:#fff;}
-.upcoming{background:#2e7d32;color:#fff;}
+.today{background:#ffeb3b;}
 .blink{animation:blink 1s infinite;}
 
 </style>
@@ -110,6 +134,7 @@ td{padding:10px;text-align:center;border-bottom:1px solid #ddd;}
 <div id="totalQty">Total Qty: 0</div>
 </header>
 
+<!-- KPI -->
 <div id="kpiSection">
 <div class="kpi">
 <div>TODAY OTD</div>
@@ -124,7 +149,9 @@ td{padding:10px;text-align:center;border-bottom:1px solid #ddd;}
 
 <div id="alert"></div>
 
+<!-- TOP -->
 <div id="topSection">
+
 <div id="chartContainer">
 <h3 style="text-align:center;">CUSTOMER WISE DISPATCH</h3>
 <canvas id="chart"></canvas>
@@ -134,8 +161,10 @@ td{padding:10px;text-align:center;border-bottom:1px solid #ddd;}
 <h3 style="text-align:center;">CUSTOMER SUMMARY</h3>
 <div id="summaryContent"></div>
 </div>
+
 </div>
 
+<!-- TABLE -->
 <div id="tableContainer"></div>
 
 <script>
@@ -144,7 +173,7 @@ const URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JF
 
 function clean(v){return v?v.replace(/"/g,'').trim():"";}
 
-/* CSV FIX */
+/* CSV PARSER */
 function parseCSV(data){
 return data.split("\n").map(row=>{
 let res=[],cur='',q=false;
@@ -163,14 +192,12 @@ function parseDate(v){
 v=clean(v);
 if(!v) return null;
 
-// try auto parse
 let d=new Date(v);
 if(!isNaN(d)){
 d.setHours(0,0,0,0);
 return d;
 }
 
-// 25-Mar format
 let p=v.split("-");
 if(p.length===2){
 const m={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
@@ -187,15 +214,49 @@ fetch(URL).then(r=>r.text()).then(data=>{
 let rows=parseCSV(data);
 rows.splice(0,2);
 
-let today=new Date(); today.setHours(0,0,0,0);
+let today=new Date(); 
+today.setHours(0,0,0,0);
 
-let cust={},total=0;
-let todaySch=0,todayDisp=0,yPending=0;
+let validRows=[];
+let latestDate=null;
+
+/* FIND LATEST DATE */
+rows.forEach(r=>{
+let d=parseDate(r[2]);
+if(d){
+if(!latestDate || d>latestDate) latestDate=d;
+}
+});
+
+/* FILTER TODAY + YESTERDAY */
+rows.forEach(r=>{
+let d=parseDate(r[2]);
+if(!d) return;
+
+let diff=(today-d)/(1000*60*60*24);
+
+if(diff===0 || diff===1){
+validRows.push(r);
+}
+});
+
+/* FALLBACK */
+if(validRows.length===0){
+rows.forEach(r=>{
+let d=parseDate(r[2]);
+if(d && d.getTime()===latestDate.getTime()){
+validRows.push(r);
+}
+});
+}
+
+/* PROCESS */
+let cust={}, total=0;
+let todaySch=0, todayDisp=0, yPending=0;
 
 let html="<table><tr><th>SI</th><th>CUSTOMER</th><th>DATE</th><th>ITEM</th><th>NAME</th><th>PRODUCT</th><th>MANAGER</th><th>QTY</th><th>REMARK</th><th>STATUS</th></tr>";
 
-rows.forEach(r=>{
-if(r.length<9) return;
+validRows.forEach(r=>{
 
 let c=clean(r[1]);
 let qty=parseInt(clean(r[7]));
@@ -204,11 +265,9 @@ let date=parseDate(r[2]);
 
 if(!qty||!date) return;
 
-/* FILTER TODAY + YESTERDAY */
-let diff=(today-date)/(1000*60*60*24);
-if(diff!==0 && diff!==1) return;
-
 total+=qty;
+
+let diff=(today-date)/(1000*60*60*24);
 
 /* KPI */
 if(diff===0){
@@ -242,7 +301,7 @@ document.getElementById("tableContainer").innerHTML=html;
 document.getElementById("totalQty").innerText="Total Qty: "+total;
 
 /* KPI */
-let otd = todaySch?((todayDisp/todaySch)*100).toFixed(1):0;
+let otd=todaySch?((todayDisp/todaySch)*100).toFixed(1):0;
 document.getElementById("todayOTD").innerText=otd+"%";
 document.getElementById("yPending").innerText=yPending;
 
@@ -257,10 +316,13 @@ let disp=labels.map(x=>cust[x].disp);
 
 new Chart(document.getElementById("chart"),{
 type:'bar',
-data:{labels:labels,datasets:[
+data:{
+labels:labels,
+datasets:[
 {label:'Scheduled',data:sch},
 {label:'Dispatched',data:disp}
-]}
+]
+}
 });
 
 /* SUMMARY */
@@ -269,6 +331,7 @@ let sHTML="<table class='summary-table'><tr><th>Customer</th><th>Sch</th><th>Dis
 labels.forEach(c=>{
 let s=cust[c].sch,d=cust[c].disp;
 let o=s?((d/s)*100).toFixed(1):0;
+
 let color=o<50?'red':o<80?'orange':'green';
 
 sHTML+=`<tr>
@@ -280,6 +343,7 @@ sHTML+=`<tr>
 });
 
 sHTML+="</table>";
+
 document.getElementById("summaryContent").innerHTML=sHTML;
 
 /* SCROLL */
