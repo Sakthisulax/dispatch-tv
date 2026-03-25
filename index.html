@@ -8,7 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-
 body{
 margin:0;
 font-family:Arial;
@@ -16,61 +15,48 @@ background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
 color:white;
 }
 
-/* HEADER */
-
 header{
 display:flex;
 justify-content:space-between;
-align-items:center;
 padding:20px 60px;
 background:rgba(255,255,255,0.08);
 }
 
-h1{font-size:42px;margin:0;}
+h1{font-size:40px;margin:0;}
 
 #totalQty{
-font-size:26px;
+font-size:24px;
 background:rgba(255,255,255,0.2);
 padding:10px 20px;
 border-radius:25px;
 }
 
 /* KPI */
-
 #kpiSection{
 display:flex;
-justify-content:space-between;
-padding:10px 60px;
 gap:20px;
+padding:10px 60px;
 }
 
 .kpi{
 flex:1;
 text-align:center;
-padding:20px;
-border-radius:15px;
+padding:15px;
 background:rgba(255,255,255,0.1);
+border-radius:15px;
 }
 
-.kpi h2{margin:0;font-size:20px;}
-.kpi-value{font-size:36px;font-weight:bold;margin-top:10px;}
-
-/* ALERT */
+.kpi-value{font-size:32px;font-weight:bold;}
 
 #alert{
 text-align:center;
-font-size:28px;
-font-weight:bold;
-color:#ff5252;
+font-size:26px;
+color:red;
 animation:blink 1s infinite;
 }
-
-@keyframes blink{
-50%{opacity:0.3;}
-}
+@keyframes blink{50%{opacity:0.3;}}
 
 /* TOP */
-
 #topSection{
 display:flex;
 gap:20px;
@@ -80,45 +66,38 @@ padding:20px 60px;
 #chartContainer{width:40%;background:rgba(255,255,255,0.08);padding:20px;border-radius:20px;}
 #summaryTable{width:60%;background:rgba(255,255,255,0.08);padding:20px;border-radius:20px;}
 
-/* SUMMARY */
-
 .summary-table{
 width:100%;
-border-collapse:collapse;
 background:#fff;
 color:#000;
+border-collapse:collapse;
 }
-
-.summary-table th{background:#000;color:#fff;padding:10px;}
+.summary-table th{background:#000;color:#fff;}
 .summary-table td{padding:8px;text-align:center;border-bottom:1px solid #ddd;}
 
-/* MAIN TABLE */
-
+/* TABLE */
 #tableContainer{
 margin:20px 60px;
 background:rgba(255,255,255,0.08);
 padding:20px;
-border-radius:20px;
 height:55vh;
 overflow:hidden;
+border-radius:20px;
 }
 
 table{
 width:100%;
-border-collapse:collapse;
 background:#fff;
 color:#000;
-font-size:24px;
+border-collapse:collapse;
+font-size:22px;
 }
-
-th{background:#000;color:#fff;padding:12px;position:sticky;top:0;}
-td{padding:12px;text-align:center;border-bottom:1px solid #ddd;}
+th{background:#000;color:#fff;position:sticky;top:0;}
+td{padding:10px;text-align:center;border-bottom:1px solid #ddd;}
 
 .today{background:#ffeb3b;}
-.overdue{}
-.upcoming{background:#2e7d32;color:#fff;}
 .dispatched{background:#00c853;color:#fff;}
-
+.upcoming{background:#2e7d32;color:#fff;}
 .blink{animation:blink 1s infinite;}
 
 </style>
@@ -128,27 +107,24 @@ td{padding:12px;text-align:center;border-bottom:1px solid #ddd;}
 
 <header>
 <h1>DAILY DISPATCH PLAN</h1>
-<div id="totalQty">Loading...</div>
+<div id="totalQty">Total Qty: 0</div>
 </header>
 
-<!-- KPI -->
 <div id="kpiSection">
 <div class="kpi">
-<h2>TODAY OTD</h2>
-<div id="todayOTD" class="kpi-value">--%</div>
+<div>TODAY OTD</div>
+<div id="todayOTD" class="kpi-value">0%</div>
 </div>
 
 <div class="kpi">
-<h2>YESTERDAY PENDING</h2>
-<div id="yPending" class="kpi-value">--</div>
+<div>YESTERDAY PENDING</div>
+<div id="yPending" class="kpi-value">0</div>
 </div>
 </div>
 
 <div id="alert"></div>
 
-<!-- TOP -->
 <div id="topSection">
-
 <div id="chartContainer">
 <h3 style="text-align:center;">CUSTOMER WISE DISPATCH</h3>
 <canvas id="chart"></canvas>
@@ -158,10 +134,8 @@ td{padding:12px;text-align:center;border-bottom:1px solid #ddd;}
 <h3 style="text-align:center;">CUSTOMER SUMMARY</h3>
 <div id="summaryContent"></div>
 </div>
-
 </div>
 
-<!-- TABLE -->
 <div id="tableContainer"></div>
 
 <script>
@@ -184,17 +158,29 @@ return res;
 });
 }
 
+/* FLEXIBLE DATE */
 function parseDate(v){
 v=clean(v);
 if(!v) return null;
-let [d,m]=v.split("-");
-const M={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-let dt=new Date(new Date().getFullYear(),M[m.toLowerCase()],parseInt(d));
+
+// try auto parse
+let d=new Date(v);
+if(!isNaN(d)){
+d.setHours(0,0,0,0);
+return d;
+}
+
+// 25-Mar format
+let p=v.split("-");
+if(p.length===2){
+const m={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+let dt=new Date(new Date().getFullYear(),m[p[1].toLowerCase()],parseInt(p[0]));
 dt.setHours(0,0,0,0);
 return dt;
 }
 
-function same(d1,d2){return d1.getDate()==d2.getDate()&&d1.getMonth()==d2.getMonth();}
+return null;
+}
 
 fetch(URL).then(r=>r.text()).then(data=>{
 
@@ -202,10 +188,9 @@ let rows=parseCSV(data);
 rows.splice(0,2);
 
 let today=new Date(); today.setHours(0,0,0,0);
-let yest=new Date(today); yest.setDate(today.getDate()-1);
 
-let cust={}, total=0;
-let todaySch=0, todayDisp=0, yPending=0;
+let cust={},total=0;
+let todaySch=0,todayDisp=0,yPending=0;
 
 let html="<table><tr><th>SI</th><th>CUSTOMER</th><th>DATE</th><th>ITEM</th><th>NAME</th><th>PRODUCT</th><th>MANAGER</th><th>QTY</th><th>REMARK</th><th>STATUS</th></tr>";
 
@@ -219,17 +204,18 @@ let date=parseDate(r[2]);
 
 if(!qty||!date) return;
 
-/* FILTER */
-if(!same(date,today)&&!same(date,yest)) return;
+/* FILTER TODAY + YESTERDAY */
+let diff=(today-date)/(1000*60*60*24);
+if(diff!==0 && diff!==1) return;
 
 total+=qty;
 
 /* KPI */
-if(same(date,today)){
+if(diff===0){
 todaySch+=qty;
 if(remark.includes("dispatched")) todayDisp+=qty;
 }
-if(same(date,yest)&&!remark.includes("dispatched")){
+if(diff===1 && !remark.includes("dispatched")){
 yPending+=qty;
 }
 
@@ -241,24 +227,22 @@ if(remark.includes("dispatched")) cust[c].disp+=qty;
 /* TABLE */
 let cls="",status="";
 if(remark.includes("dispatched")){cls="dispatched";status="DISPATCHED";}
-else if(date<today){cls="overdue";status="OVERDUE";}
-else if(same(date,today)){cls="today";status="TODAY";}
-else{cls="upcoming";status="UPCOMING";}
+else if(diff===1){cls="blink";status="OVERDUE";}
+else{cls="today";status="TODAY";}
 
 html+="<tr class='"+cls+"'>";
-for(let i=0;i<9;i++){
-if(i==8&&cls=="overdue") html+="<td class='blink'>"+clean(r[i])+"</td>";
-else html+="<td>"+clean(r[i])+"</td>";
-}
+for(let i=0;i<9;i++) html+="<td>"+clean(r[i])+"</td>";
 html+="<td>"+status+"</td></tr>";
+
 });
 
 html+="</table>";
+
 document.getElementById("tableContainer").innerHTML=html;
 document.getElementById("totalQty").innerText="Total Qty: "+total;
 
-/* KPI DISPLAY */
-let otd = todaySch ? ((todayDisp/todaySch)*100).toFixed(1) : 0;
+/* KPI */
+let otd = todaySch?((todayDisp/todaySch)*100).toFixed(1):0;
 document.getElementById("todayOTD").innerText=otd+"%";
 document.getElementById("yPending").innerText=yPending;
 
@@ -273,16 +257,19 @@ let disp=labels.map(x=>cust[x].disp);
 
 new Chart(document.getElementById("chart"),{
 type:'bar',
-data:{labels:labels,datasets:[{label:'Scheduled',data:sch},{label:'Dispatched',data:disp}]}
+data:{labels:labels,datasets:[
+{label:'Scheduled',data:sch},
+{label:'Dispatched',data:disp}
+]}
 });
 
 /* SUMMARY */
 let sHTML="<table class='summary-table'><tr><th>Customer</th><th>Sch</th><th>Disp</th><th>OTD%</th></tr>";
-labels.forEach(c=>{
-let s=cust[c].sch, d=cust[c].disp;
-let o=s?((d/s)*100).toFixed(1):0;
 
-let color = o<50?'red':o<80?'orange':'green';
+labels.forEach(c=>{
+let s=cust[c].sch,d=cust[c].disp;
+let o=s?((d/s)*100).toFixed(1):0;
+let color=o<50?'red':o<80?'orange':'green';
 
 sHTML+=`<tr>
 <td>${c}</td>
@@ -291,8 +278,8 @@ sHTML+=`<tr>
 <td style="color:${color};font-weight:bold;">${o}%</td>
 </tr>`;
 });
-sHTML+="</table>";
 
+sHTML+="</table>";
 document.getElementById("summaryContent").innerHTML=sHTML;
 
 /* SCROLL */
