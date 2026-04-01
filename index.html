@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Dispatch TV Dashboard</title>
+  <title>Dispatch One Page Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
@@ -10,39 +10,27 @@
       font-family: Arial;
       background: #0f172a;
       color: white;
-      overflow: hidden;
-    }
-
-    .page {
-      display: none;
-      height: 100vh;
-      padding: 10px;
-    }
-
-    .active {
-      display: block;
     }
 
     .topbar {
       display: flex;
       justify-content: space-between;
+      padding: 10px 20px;
       font-size: 18px;
-      padding: 5px 20px;
     }
 
-    /* TILE PAGE */
     .tiles {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 10px;
-      margin: 10px;
+      padding: 10px;
     }
 
     .tile {
-      padding: 20px;
+      padding: 15px;
       border-radius: 10px;
       text-align: center;
-      font-size: 20px;
+      font-size: 18px;
     }
 
     .blue { background: #2563eb; }
@@ -54,6 +42,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
+      padding: 10px;
     }
 
     canvas {
@@ -62,10 +51,10 @@
       padding: 10px;
     }
 
-    /* TABLE PAGE */
     .table-container {
-      height: 90vh;
+      height: 200px;
       overflow: hidden;
+      margin: 10px;
       background: white;
       color: black;
     }
@@ -73,11 +62,12 @@
     table {
       width: 100%;
       border-collapse: collapse;
+      font-size: 12px;
     }
 
     th, td {
       border: 1px solid #ccc;
-      padding: 6px;
+      padding: 5px;
       text-align: center;
     }
 
@@ -95,67 +85,64 @@
       animation: blink 1s infinite;
     }
 
-    /* MATRIX PAGE */
-    .matrix table {
+    @keyframes blink {
+      50% { opacity: 0.5; }
+    }
+
+    .matrix {
+      margin: 10px;
       background: white;
       color: black;
-      font-size: 12px;
+      overflow-x: auto;
+    }
+
+    .matrix table {
+      font-size: 11px;
     }
 
     .greenCell { background:#22c55e; color:white; }
     .redCell { background:#ef4444; color:white; }
-
-    @keyframes blink {
-      50% { opacity: 0.5; }
-    }
 
   </style>
 </head>
 
 <body>
 
-<!-- PAGE 1 -->
-<div class="page active" id="page1">
-  <div class="topbar">
-    <div>📦 Dispatch Dashboard</div>
-    <div id="clock"></div>
-  </div>
-
-  <div class="tiles">
-    <div class="tile blue">Total<br><span id="total"></span></div>
-    <div class="tile green">Dispatched<br><span id="disp"></span></div>
-    <div class="tile red">Pending<br><span id="pend"></span></div>
-    <div class="tile orange">Today<br><span id="today"></span></div>
-  </div>
-
-  <h2 style="text-align:center">🎯 Achievement: <span id="percent"></span>%</h2>
-
-  <div class="charts">
-    <canvas id="chart1"></canvas>
-    <canvas id="chart2"></canvas>
-  </div>
+<div class="topbar">
+  <div>📦 Dispatch Dashboard</div>
+  <div id="clock"></div>
 </div>
 
-<!-- PAGE 2 -->
-<div class="page" id="page2">
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Customer</th>
-          <th>Date</th>
-          <th>Item</th>
-          <th>Qty</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
-  </div>
+<div class="tiles">
+  <div class="tile blue">Total<br><span id="total"></span></div>
+  <div class="tile green">Dispatched<br><span id="disp"></span></div>
+  <div class="tile red">Pending<br><span id="pend"></span></div>
+  <div class="tile orange">Today<br><span id="today"></span></div>
 </div>
 
-<!-- PAGE 3 -->
-<div class="page matrix" id="page3">
+<h3 style="text-align:center">🎯 Achievement: <span id="percent"></span>%</h3>
+
+<div class="charts">
+  <canvas id="chart1"></canvas>
+  <canvas id="chart2"></canvas>
+</div>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th>Date</th>
+        <th>Item</th>
+        <th>Qty</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<div class="matrix">
   <table>
     <thead id="mhead"></thead>
     <tbody id="mbody"></tbody>
@@ -168,31 +155,30 @@ const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6
 
 /* CLOCK */
 setInterval(()=>{
-  document.getElementById("clock").innerText = new Date().toLocaleString();
+  document.getElementById("clock").innerText=new Date().toLocaleString();
 },1000);
 
-/* PAGE ROTATION */
-let pages = document.querySelectorAll(".page");
-let current = 0;
+function getLast7Days(){
+  let d=[];
+  for(let i=6;i>=0;i--){
+    let dt=new Date();
+    dt.setDate(dt.getDate()-i);
+    d.push(dt.toLocaleDateString("en-GB",{day:'numeric',month:'short'}));
+  }
+  return d;
+}
 
-setInterval(()=>{
-  pages[current].classList.remove("active");
-  current = (current + 1) % pages.length;
-  pages[current].classList.add("active");
-},10000);
-
-/* LOAD DATA */
 fetch(url)
 .then(res=>res.text())
 .then(data=>{
 
-  const rows = data.split("\n").slice(1);
+  const rows=data.split("\n").slice(1);
 
-  let total=0, disp=0, pend=0, today=0;
-  let custMap={};
-  let dataset={};
+  let total=0,disp=0,pend=0,today=0;
+  let custMap={},dataset={};
 
-  const todayStr = new Date().toDateString();
+  const todayStr=new Date().toDateString();
+  const lastDays=getLast7Days();
 
   rows.forEach(r=>{
     let c=r.split(",");
@@ -203,7 +189,7 @@ fetch(url)
     let qty=parseInt(c[7])||0;
     let remark=c[8].toLowerCase();
 
-    let isDis = remark==="dispatched";
+    let isDis=remark==="dispatched";
 
     total+=qty;
     if(isDis){
@@ -214,7 +200,7 @@ fetch(url)
     if(!custMap[customer]) custMap[customer]=0;
     if(isDis) custMap[customer]+=qty;
 
-    // table
+    // TABLE
     let tr=document.createElement("tr");
     tr.innerHTML=`
       <td>${customer}</td>
@@ -225,7 +211,9 @@ fetch(url)
     `;
     document.getElementById("tbody").appendChild(tr);
 
-    // matrix
+    // MATRIX
+    if(!lastDays.includes(date)) return;
+
     if(!dataset[customer]) dataset[customer]={};
     if(!dataset[customer][date]) dataset[customer][date]={sch:0,dis:0};
 
@@ -233,16 +221,18 @@ fetch(url)
     if(isDis) dataset[customer][date].dis+=qty;
   });
 
+  // KPIs
   document.getElementById("total").innerText=total;
   document.getElementById("disp").innerText=disp;
   document.getElementById("pend").innerText=pend;
   document.getElementById("today").innerText=today;
-
   document.getElementById("percent").innerText=
     total?((disp/total)*100).toFixed(1):0;
 
+  // CHARTS
   new Chart(chart1,{type:"doughnut",
-    data:{labels:["Dis","Pend"],datasets:[{data:[disp,pend]}]}
+    data:{labels:["Dispatched","Pending"],
+    datasets:[{data:[disp,pend]}]}
   });
 
   new Chart(chart2,{type:"bar",
@@ -250,9 +240,41 @@ fetch(url)
     datasets:[{data:Object.values(custMap)}]}
   });
 
+  // MATRIX HEADER
+  let h1="<tr><th rowspan='2'>Customer</th>";
+  lastDays.forEach(d=>h1+=`<th colspan='2'>${d}</th>`);
+  h1+="</tr>";
+
+  let h2="<tr>";
+  lastDays.forEach(()=>h2+="<th>S</th><th>D</th>");
+  h2+="</tr>";
+
+  document.getElementById("mhead").innerHTML=h1+h2;
+
+  // MATRIX BODY
+  let body="";
+  Object.keys(dataset).forEach(cust=>{
+    let row=`<tr><td>${cust}</td>`;
+    lastDays.forEach(d=>{
+      let sch=dataset[cust]?.[d]?.sch||"-";
+      let dis=dataset[cust]?.[d]?.dis||"-";
+
+      let cls="";
+      if(sch!="-"){
+        cls=(dis>=sch)?"greenCell":"redCell";
+      }
+
+      row+=`<td>${sch}</td><td class="${cls}">${dis}</td>`;
+    });
+    row+="</tr>";
+    body+=row;
+  });
+
+  document.getElementById("mbody").innerHTML=body;
+
 });
 
-/* AUTO SCROLL TABLE */
+// AUTO SCROLL
 let scroll=0;
 setInterval(()=>{
   let c=document.querySelector(".table-container");
@@ -261,7 +283,7 @@ setInterval(()=>{
   if(scroll>=c.scrollHeight-c.clientHeight) scroll=0;
 },50);
 
-/* AUTO REFRESH */
+// AUTO REFRESH
 setInterval(()=>location.reload(),60000);
 
 </script>
