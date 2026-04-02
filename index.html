@@ -46,7 +46,7 @@
     }
 
     .table-container {
-      height:180px;
+      height:220px;
       overflow:hidden;
       margin:8px;
       background:white;
@@ -56,7 +56,7 @@
     table {
       width:100%;
       border-collapse:collapse;
-      font-size:11px;
+      font-size:12px;
     }
 
     th, td {
@@ -82,7 +82,7 @@
       overflow-x:auto;
     }
 
-    .matrix table { font-size:10px; }
+    .matrix table { font-size:11px; }
 
     .greenCell { background:#22c55e; color:white; }
     .redCell { background:#ef4444; color:white; }
@@ -140,7 +140,6 @@
 
 <script>
 
-// ⚠️ IMPORTANT: Ensure this Google Sheet is PUBLIC (Anyone with link)
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
 setInterval(()=>{
@@ -158,43 +157,37 @@ function getLast7Days(){
 }
 
 async function loadData(){
+
+  if(location.protocol === 'file:'){
+    document.getElementById("errorBox").innerText =
+      "⚠️ Use Live Server or Hosting (local file won't load sheet)";
+  }
+
   try{
     const res = await fetch(url);
-
-    if(!res.ok){
-      throw new Error("Sheet not accessible (Check sharing settings)");
-    }
+    if(!res.ok) throw new Error("Sheet not accessible");
 
     const data = await res.text();
-
-    if(!data || data.trim().length === 0){
-      throw new Error("No data received from sheet");
-    }
-
     processData(data);
 
   }catch(err){
-    console.error(err);
     document.getElementById("errorBox").innerText =
-      "❌ Data Load Failed: " + err.message +
-      " | Check: Internet / Sheet Public Access";
+      "❌ Data Load Failed: " + err.message;
 
-    // FALLBACK TEST DATA (so UI won't break)
     processData(`
 ID,Customer,Date,x,x,Item,x,Qty,Remark
-1,Test Customer,01/04/2026,, ,Item A,,10,Dispatched
-2,Test Customer,02/04/2026,, ,Item B,,5,Pending
-3,ABC Ltd,02/04/2026,, ,Item C,,8,Dispatched
+1,Demo,01/04/2026,, ,Item A,,10,Ready
+2,Demo,02/04/2026,, ,Item B,,5,Not Ready
     `);
   }
 }
 
 function processData(data){
 
-  const rows=data.split("\n").slice(1);
+  const rows=data.replace(/\r/g,"").split("\n").slice(1);
 
   let total=0,disp=0,pend=0,today=0;
-  let custPending={}, custDispatch={}, dataset={};
+  let custTotal={}, custDispatch={}, dataset={};
 
   const todayStr=new Date().toDateString();
   const lastDays=getLast7Days();
@@ -203,14 +196,15 @@ function processData(data){
     let c=r.split(",");
     if(c.length<9) return;
 
-    let customer=c[1];
-    let date=c[2];
+    let customer=(c[1]||"").trim();
+    let date=(c[2]||"").trim();
     let qty=parseInt(c[7])||0;
-    let remark=(c[8]||"").toLowerCase();
+    let remark=(c[8]||"").toLowerCase().trim();
 
-    let isDis=remark==="dispatched";
+    let isDis = (remark === "dispatched" || remark === "ready");
 
     total+=qty;
+
     if(isDis){
       disp+=qty;
       if(new Date(date).toDateString()===todayStr) today+=qty;
@@ -218,11 +212,11 @@ function processData(data){
       pend+=qty;
     }
 
-    if(!custPending[customer]) custPending[customer]=0;
+    if(!custTotal[customer]) custTotal[customer]=0;
     if(!custDispatch[customer]) custDispatch[customer]=0;
 
+    custTotal[customer]+=qty;
     if(isDis) custDispatch[customer]+=qty;
-    else custPending[customer]+=qty;
 
     let tr=document.createElement("tr");
     tr.innerHTML=`
@@ -230,11 +224,14 @@ function processData(data){
       <td>${date}</td>
       <td>${c[5]||''}</td>
       <td>${qty}</td>
-      <td class="${isDis?'ok':'pending'}">${remark}</td>
+      <td class="${isDis?'ok':'pending'}">${remark.toUpperCase()}</td>
     `;
     document.getElementById("tbody").appendChild(tr);
 
-    let formattedDate = new Date(date).toLocaleDateString("en-GB");
+    let formattedDate;
+    try{ formattedDate = new Date(date).toLocaleDateString("en-GB"); }
+    catch{ formattedDate = date; }
+
     if(!lastDays.includes(formattedDate)) return;
 
     if(!dataset[customer]) dataset[customer]={};
@@ -252,10 +249,10 @@ function processData(data){
   new Chart(chart2,{
     type:"bar",
     data:{
-      labels:Object.keys(custPending),
+      labels:Object.keys(custTotal),
       datasets:[
-        {label:"Pending", data:Object.values(custPending)},
-        {label:"Dispatched", data:Object.values(custDispatch)}
+        {label:"Scheduled Qty", data:Object.values(custTotal)},
+        {label:"Dispatched Qty", data:Object.values(custDispatch)}
       ]
     }
   });
@@ -263,7 +260,6 @@ function processData(data){
   let h1="<tr><th>Customer</th>";
   lastDays.forEach(d=>h1+=`<th>${d}</th>`);
   h1+="</tr>";
-
   document.getElementById("mhead").innerHTML=h1;
 
   let body="";
@@ -272,7 +268,6 @@ function processData(data){
     lastDays.forEach(d=>{
       let dis=dataset[cust]?.[d]?.dis||0;
       let sch=dataset[cust]?.[d]?.sch||0;
-
       let cls = dis>=sch ? "greenCell" : "redCell";
       row+=`<td class="${cls}">${dis}/${sch}</td>`;
     });
@@ -285,7 +280,6 @@ function processData(data){
 
 loadData();
 
-// AUTO SCROLL
 let scroll=0;
 setInterval(()=>{
   let c=document.querySelector(".table-container");
