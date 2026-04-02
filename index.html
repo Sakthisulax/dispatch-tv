@@ -141,7 +141,7 @@
 <script>
 
 // ⚠️ IMPORTANT: Ensure this Google Sheet is PUBLIC (Anyone with link)
-const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv"; // ✅ Verified link
 
 setInterval(()=>{
   document.getElementById("clock").innerText=new Date().toLocaleString();
@@ -158,6 +158,11 @@ function getLast7Days(){
 }
 
 async function loadData(){
+  // Detect if running from local file (file://) which blocks fetch
+  if(location.protocol === 'file:'){
+    document.getElementById("errorBox").innerText =
+      "⚠️ Running in local file preview. Google Sheet will not load. Please host using Live Server or GitHub Pages.";
+  }
   try{
     const res = await fetch(url);
 
@@ -191,7 +196,8 @@ ID,Customer,Date,x,x,Item,x,Qty,Remark
 
 function processData(data){
 
-  const rows=data.split("\n").slice(1);
+  const rows=data.replace(/
+/g,"").split("\n").slice(1);
 
   let total=0,disp=0,pend=0,today=0;
   let custPending={}, custDispatch={}, dataset={};
@@ -203,12 +209,15 @@ function processData(data){
     let c=r.split(",");
     if(c.length<9) return;
 
-    let customer=c[1];
-    let date=c[2];
-    let qty=parseInt(c[7])||0;
-    let remark=(c[8]||"").toLowerCase();
+    let customer=(c[1]||"").trim();
+    let date=(c[2]||"").trim(); // e.g. 5-Mar
+    let qty=parseInt(c[7])||0; // SCH QTY column correct
+    let remark=(c[8]||"").toLowerCase().trim();
 
-    let isDis=remark==="dispatched";
+    // Treat READY as dispatched
+    let isDis = (remark === "dispatched" || remark === "ready");
+
+    // TOTAL LOGIC: Scheduled vs Dispatched
 
     total+=qty;
     if(isDis){
@@ -221,8 +230,11 @@ function processData(data){
     if(!custPending[customer]) custPending[customer]=0;
     if(!custDispatch[customer]) custDispatch[customer]=0;
 
-    if(isDis) custDispatch[customer]+=qty;
-    else custPending[customer]+=qty;
+    // Scheduled = total qty
+    custPending[customer] += qty;
+
+    // Dispatched = only ready/dispatched
+    if(isDis) custDispatch[customer] += qty;
 
     let tr=document.createElement("tr");
     tr.innerHTML=`
@@ -234,7 +246,7 @@ function processData(data){
     `;
     document.getElementById("tbody").appendChild(tr);
 
-    let formattedDate = new Date(date).toLocaleDateString("en-GB");
+    let formattedDate; try{ formattedDate = new Date(date).toLocaleDateString("en-GB"); }catch{ formattedDate = date; }
     if(!lastDays.includes(formattedDate)) return;
 
     if(!dataset[customer]) dataset[customer]={};
@@ -254,8 +266,8 @@ function processData(data){
     data:{
       labels:Object.keys(custPending),
       datasets:[
-        {label:"Pending", data:Object.values(custPending)},
-        {label:"Dispatched", data:Object.values(custDispatch)}
+        {label:"Scheduled Qty", data:Object.values(custPending)},
+        {label:"Dispatched Qty", data:Object.values(custDispatch)}
       ]
     }
   });
