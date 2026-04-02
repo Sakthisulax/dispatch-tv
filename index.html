@@ -5,104 +5,94 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      background: #0f172a;
-      color: white;
-    }
+    body { margin:0; font-family:Arial; background:#0f172a; color:white; }
 
     .topbar {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 20px;
-      font-size: 18px;
+      display:flex; justify-content:space-between;
+      padding:8px 15px; font-size:16px;
     }
 
     .tiles {
-      display: grid;
+      display:grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      padding: 10px;
+      gap:8px;
+      padding:8px;
     }
 
     .tile {
-      padding: 15px;
-      border-radius: 10px;
-      text-align: center;
-      font-size: 18px;
+      padding:10px;
+      border-radius:8px;
+      text-align:center;
+      font-size:14px;
     }
 
-    .blue { background: #2563eb; }
-    .green { background: #16a34a; }
-    .red { background: #dc2626; }
-    .orange { background: #ea580c; }
+    .blue { background:#2563eb; }
+    .green { background:#16a34a; }
+    .red { background:#dc2626; }
+    .orange { background:#ea580c; }
 
     .charts {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      padding: 10px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:8px;
+      padding:8px;
     }
 
     canvas {
-      background: white;
-      border-radius: 10px;
-      padding: 10px;
+      background:white;
+      border-radius:8px;
+      padding:5px;
+      height:180px !important;
     }
 
     .table-container {
-      height: 200px;
-      overflow: hidden;
-      margin: 10px;
-      background: white;
-      color: black;
+      height:180px;
+      overflow:hidden;
+      margin:8px;
+      background:white;
+      color:black;
     }
 
     table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
+      width:100%;
+      border-collapse:collapse;
+      font-size:11px;
     }
 
     th, td {
-      border: 1px solid #ccc;
-      padding: 5px;
-      text-align: center;
+      border:1px solid #ccc;
+      padding:4px;
+      text-align:center;
     }
 
     th {
-      background: black;
-      color: white;
-      position: sticky;
-      top: 0;
+      background:black;
+      color:white;
+      position:sticky;
+      top:0;
     }
 
-    .ok { background: #22c55e; color: white; }
-    .pending {
-      background: #ef4444;
-      color: white;
-      animation: blink 1s infinite;
-    }
-
-    @keyframes blink {
-      50% { opacity: 0.5; }
-    }
+    .ok { background:#22c55e; color:white; }
+    .pending { background:#ef4444; color:white; }
 
     .matrix {
-      margin: 10px;
-      background: white;
-      color: black;
-      overflow-x: auto;
+      margin:8px;
+      background:white;
+      color:black;
+      overflow-x:auto;
     }
 
-    .matrix table {
-      font-size: 11px;
-    }
+    .matrix table { font-size:10px; }
 
     .greenCell { background:#22c55e; color:white; }
     .redCell { background:#ef4444; color:white; }
 
+    .error {
+      color:#ffcccb;
+      text-align:center;
+      padding:10px;
+      font-size:14px;
+    }
   </style>
 </head>
 
@@ -114,16 +104,13 @@
 </div>
 
 <div class="tiles">
-  <div class="tile blue">Total<br><span id="total"></span></div>
-  <div class="tile green">Dispatched<br><span id="disp"></span></div>
-  <div class="tile red">Pending<br><span id="pend"></span></div>
-  <div class="tile orange">Today<br><span id="today"></span></div>
+  <div class="tile blue">Total<br><span id="total">0</span></div>
+  <div class="tile green">Dispatched<br><span id="disp">0</span></div>
+  <div class="tile red">Pending<br><span id="pend">0</span></div>
+  <div class="tile orange">Today<br><span id="today">0</span></div>
 </div>
 
-<h3 style="text-align:center">🎯 Achievement: <span id="percent"></span>%</h3>
-
 <div class="charts">
-  <canvas id="chart1"></canvas>
   <canvas id="chart2"></canvas>
 </div>
 
@@ -149,11 +136,13 @@
   </table>
 </div>
 
+<div id="errorBox" class="error"></div>
+
 <script>
 
+// ⚠️ IMPORTANT: Ensure this Google Sheet is PUBLIC (Anyone with link)
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04b2M0n-rrLlRUMu6JFJP5dxHBSQ8-4m45W47nxwwLUBDs1INcHO6jswUCnk3kp57AP3tQq19qccF/pub?output=csv";
 
-/* CLOCK */
 setInterval(()=>{
   document.getElementById("clock").innerText=new Date().toLocaleString();
 },1000);
@@ -163,19 +152,49 @@ function getLast7Days(){
   for(let i=6;i>=0;i--){
     let dt=new Date();
     dt.setDate(dt.getDate()-i);
-    d.push(dt.toLocaleDateString("en-GB",{day:'numeric',month:'short'}));
+    d.push(dt.toLocaleDateString("en-GB"));
   }
   return d;
 }
 
-fetch(url)
-.then(res=>res.text())
-.then(data=>{
+async function loadData(){
+  try{
+    const res = await fetch(url);
+
+    if(!res.ok){
+      throw new Error("Sheet not accessible (Check sharing settings)");
+    }
+
+    const data = await res.text();
+
+    if(!data || data.trim().length === 0){
+      throw new Error("No data received from sheet");
+    }
+
+    processData(data);
+
+  }catch(err){
+    console.error(err);
+    document.getElementById("errorBox").innerText =
+      "❌ Data Load Failed: " + err.message +
+      " | Check: Internet / Sheet Public Access";
+
+    // FALLBACK TEST DATA (so UI won't break)
+    processData(`
+ID,Customer,Date,x,x,Item,x,Qty,Remark
+1,Test Customer,01/04/2026,, ,Item A,,10,Dispatched
+2,Test Customer,02/04/2026,, ,Item B,,5,Pending
+3,ABC Ltd,02/04/2026,, ,Item C,,8,Dispatched
+    `);
+  }
+}
+
+function processData(data){
 
   const rows=data.split("\n").slice(1);
 
   let total=0,disp=0,pend=0,today=0;
-  let custMap={},dataset={};
+  let custPending={}, custDispatch={}, dataset={};
 
   const todayStr=new Date().toDateString();
   const lastDays=getLast7Days();
@@ -187,7 +206,7 @@ fetch(url)
     let customer=c[1];
     let date=c[2];
     let qty=parseInt(c[7])||0;
-    let remark=c[8].toLowerCase();
+    let remark=(c[8]||"").toLowerCase();
 
     let isDis=remark==="dispatched";
 
@@ -195,95 +214,87 @@ fetch(url)
     if(isDis){
       disp+=qty;
       if(new Date(date).toDateString()===todayStr) today+=qty;
-    } else pend+=qty;
+    } else {
+      pend+=qty;
+    }
 
-    if(!custMap[customer]) custMap[customer]=0;
-    if(isDis) custMap[customer]+=qty;
+    if(!custPending[customer]) custPending[customer]=0;
+    if(!custDispatch[customer]) custDispatch[customer]=0;
 
-    // TABLE
+    if(isDis) custDispatch[customer]+=qty;
+    else custPending[customer]+=qty;
+
     let tr=document.createElement("tr");
     tr.innerHTML=`
       <td>${customer}</td>
       <td>${date}</td>
-      <td>${c[4]}</td>
+      <td>${c[5]||''}</td>
       <td>${qty}</td>
       <td class="${isDis?'ok':'pending'}">${remark}</td>
     `;
     document.getElementById("tbody").appendChild(tr);
 
-    // MATRIX
-    if(!lastDays.includes(date)) return;
+    let formattedDate = new Date(date).toLocaleDateString("en-GB");
+    if(!lastDays.includes(formattedDate)) return;
 
     if(!dataset[customer]) dataset[customer]={};
-    if(!dataset[customer][date]) dataset[customer][date]={sch:0,dis:0};
+    if(!dataset[customer][formattedDate]) dataset[customer][formattedDate]={sch:0,dis:0};
 
-    dataset[customer][date].sch+=qty;
-    if(isDis) dataset[customer][date].dis+=qty;
+    dataset[customer][formattedDate].sch+=qty;
+    if(isDis) dataset[customer][formattedDate].dis+=qty;
   });
 
-  // KPIs
   document.getElementById("total").innerText=total;
   document.getElementById("disp").innerText=disp;
   document.getElementById("pend").innerText=pend;
   document.getElementById("today").innerText=today;
-  document.getElementById("percent").innerText=
-    total?((disp/total)*100).toFixed(1):0;
 
-  // CHARTS
-  new Chart(chart1,{type:"doughnut",
-    data:{labels:["Dispatched","Pending"],
-    datasets:[{data:[disp,pend]}]}
+  new Chart(chart2,{
+    type:"bar",
+    data:{
+      labels:Object.keys(custPending),
+      datasets:[
+        {label:"Pending", data:Object.values(custPending)},
+        {label:"Dispatched", data:Object.values(custDispatch)}
+      ]
+    }
   });
 
-  new Chart(chart2,{type:"bar",
-    data:{labels:Object.keys(custMap),
-    datasets:[{data:Object.values(custMap)}]}
-  });
-
-  // MATRIX HEADER
-  let h1="<tr><th rowspan='2'>Customer</th>";
-  lastDays.forEach(d=>h1+=`<th colspan='2'>${d}</th>`);
+  let h1="<tr><th>Customer</th>";
+  lastDays.forEach(d=>h1+=`<th>${d}</th>`);
   h1+="</tr>";
 
-  let h2="<tr>";
-  lastDays.forEach(()=>h2+="<th>S</th><th>D</th>");
-  h2+="</tr>";
+  document.getElementById("mhead").innerHTML=h1;
 
-  document.getElementById("mhead").innerHTML=h1+h2;
-
-  // MATRIX BODY
   let body="";
   Object.keys(dataset).forEach(cust=>{
     let row=`<tr><td>${cust}</td>`;
     lastDays.forEach(d=>{
-      let sch=dataset[cust]?.[d]?.sch||"-";
-      let dis=dataset[cust]?.[d]?.dis||"-";
+      let dis=dataset[cust]?.[d]?.dis||0;
+      let sch=dataset[cust]?.[d]?.sch||0;
 
-      let cls="";
-      if(sch!="-"){
-        cls=(dis>=sch)?"greenCell":"redCell";
-      }
-
-      row+=`<td>${sch}</td><td class="${cls}">${dis}</td>`;
+      let cls = dis>=sch ? "greenCell" : "redCell";
+      row+=`<td class="${cls}">${dis}/${sch}</td>`;
     });
     row+="</tr>";
     body+=row;
   });
 
   document.getElementById("mbody").innerHTML=body;
+}
 
-});
+loadData();
 
 // AUTO SCROLL
 let scroll=0;
 setInterval(()=>{
   let c=document.querySelector(".table-container");
+  if(!c) return;
   scroll+=1;
   c.scrollTop=scroll;
   if(scroll>=c.scrollHeight-c.clientHeight) scroll=0;
 },50);
 
-// AUTO REFRESH
 setInterval(()=>location.reload(),60000);
 
 </script>
